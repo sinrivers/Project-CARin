@@ -1,0 +1,4 @@
+{
+"testmain":[ ["menubutton",[0,0,50,50,"printwbutton",["HELLO"]]], ["menubutton",[100,0,50,50,"printwbutton",["HELLO AGAIN"]]], ["menubutton",[200,0,50,50,"loadmenu",["testsub"]]] ],
+"testsub":[ ["menubutton",[500,100,50,50,"loadmenu",["testmain"]]],["menubutton",[400,100,50,50,"loadgame",["testroom"]]] ]
+}
