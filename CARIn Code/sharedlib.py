@@ -13,6 +13,7 @@ import storage
 class gameobject:
 	def __init__(self):
 		self.state = 0
+		self.vertsort = [0]
 		storage.objlist.append(self)
 	def update(self):
 		pass

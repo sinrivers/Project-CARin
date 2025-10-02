@@ -18,8 +18,9 @@ import gameutils
 
 #create Player Interaction Unit
 pygame.init()
-storage.window = pygame.display.set_mode((720,480))
-storage.spritecanvas = pygame.display.set_mode((720,480)).convert()
+storage.screensize = [720,480]
+storage.window = pygame.display.set_mode(storage.screensize)
+storage.spritecanvas = pygame.display.set_mode(storage.screensize).convert()
 storage.spritecanvas.set_colorkey((255,0,255))
 storage.writer = pygame.font.SysFont("Comic Sans MS",12)
 storage.mousepos = []
@@ -30,11 +31,15 @@ storage.newkeys = []
 
 #create worldstate
 storage.objlist = []
-storage.debug = False
+storage.persistobjs = [ ["camera3d",[0,0,0]] ]
+storage.party = [ ["character",[100,400,0,50,50,50,3]] ]
+storage.camfocus = [0,0]
+storage.cambounds = [0,0,storage.screensize[0],storage.screensize[1]]
+storage.debug = True
 storage.menus = json.load(open("menulayouts.json"))
 storage.levels = json.load(open("celllayouts.json"))
 genesis = menu.menubutton(0,0,0,0,"printwbutton","")
-genesis.loadgame("test2")
+genesis.loadmenu("testmain")
 
 #gameloop
 #while true
@@ -63,7 +68,7 @@ while True:
 	#update gameobjects
 	for obj in storage.objlist:
 		obj.update()
-	storage.objlist.sort(key=lambda x: [x.y,-x.z+x.d])
+	storage.objlist.sort(key=lambda x: x.vertsort)
 	#draw to screen
 	for obj in storage.objlist:
 		obj.render()
