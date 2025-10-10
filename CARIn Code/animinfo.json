@@ -1,0 +1,13 @@
+{
+"CARIn":{
+	"anims":{
+		"stand":[["stand",60]],
+		"walk":[["walkL",60],["stand",20],["walkR",60],["stand",20]]
+		},
+	"frames":{
+		"stand":[65,0,55,95],
+		"walkL":[3,0,55,95],
+		"walkR":[121,0,55,95]
+		}
+	}
+}

@@ -1,8 +1,8 @@
 """
 Filename: main.py
 Author(s): Taliesin Reese
-Version: 1.0
-Date: 9/27/2025
+Version: 3.0
+Date: 10/09/2025
 Purpose: master file for Project CARIn
 """
 
@@ -31,15 +31,21 @@ storage.newkeys = []
 
 #create worldstate
 storage.objlist = []
+storage.rendered = []
 storage.persistobjs = [ ["camera3d",[0,0,0]] ]
-storage.party = [ ["character",[100,400,0,50,50,50,3]] ]
+storage.partyspawn = [ ["character",[250,345,-500,50,50,50,3,"CARIn"]] ]
+storage.party = []
 storage.camfocus = [0,0]
 storage.cambounds = [0,0,storage.screensize[0],storage.screensize[1]]
 storage.debug = True
 storage.menus = json.load(open("menulayouts.json"))
 storage.levels = json.load(open("celllayouts.json"))
+storage.animinfo = json.load(open("animinfo.json"))
+storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
+storage.spritesheet.set_colorkey((255,0,255))
 genesis = menu.menubutton(0,0,0,0,"printwbutton","")
-genesis.loadmenu("testmain")
+#genesis.loadmenu("testmain")
+genesis.loadgame("test2")
 
 #gameloop
 #while true
@@ -66,11 +72,25 @@ while True:
 			storage.newclicks.append(event.button)
 
 	#update gameobjects
+	storage.rendered = []
 	for obj in storage.objlist:
 		obj.update()
 	storage.objlist.sort(key=lambda x: x.vertsort)
+	
+	for item in storage.objlist:
+		if storage.rendered == []:
+			storage.rendered.append(item)
+		else:
+			for obj in storage.rendered:
+				index = storage.rendered.index(obj)
+				if item.novertcollide(obj):
+					if item.z > obj.z:
+						break
+			storage.rendered.insert(index,item)
+
 	#draw to screen
-	for obj in storage.objlist:
+	for obj in storage.rendered:
+		#print(storage.renderorder, "HERE")
 		obj.render()
 	storage.window.blit(storage.spritecanvas,(0,0))
 	pygame.display.flip()
