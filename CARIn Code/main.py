@@ -1,8 +1,8 @@
 """
 Filename: main.py
 Author(s): Taliesin Reese
-Version: 3.0
-Date: 10/09/2025
+Version: 4.0
+Date: 10/15/2025
 Purpose: master file for Project CARIn
 """
 
@@ -22,6 +22,8 @@ storage.screensize = [720,480]
 storage.window = pygame.display.set_mode(storage.screensize)
 storage.spritecanvas = pygame.display.set_mode(storage.screensize).convert()
 storage.spritecanvas.set_colorkey((255,0,255))
+storage.uicanvas = pygame.display.set_mode(storage.screensize).convert()
+storage.uicanvas.set_colorkey((255,0,255))
 storage.writer = pygame.font.SysFont("Comic Sans MS",12)
 storage.mousepos = []
 storage.clicks = []
@@ -30,15 +32,21 @@ storage.keys = []
 storage.newkeys = []
 
 #create worldstate
+storage.cutscene = 0
 storage.objlist = []
 storage.rendered = []
-storage.persistobjs = [ ["camera3d",[0,0,0]] ]
+storage.persistobjs = [ ["camera3d",[0,0,0]],["uiobject",[]] ]
 storage.partyspawn = [ ["character",[250,345,-500,50,50,50,3,"CARIn"]] ]
 storage.party = []
 storage.camfocus = [0,0]
 storage.cambounds = [0,0,storage.screensize[0],storage.screensize[1]]
 storage.debug = True
 storage.menus = json.load(open("menulayouts.json"))
+#the format for cutscene actions is [<affected element>,<details of effect>,<duration of affect>]
+storage.cutscenes = {
+			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["char",["CARIn","jump"]]],
+			"test2":[["ui",["loadui","Dialogue"]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]}
+storage.uipresets = {}
 storage.levels = json.load(open("celllayouts.json"))
 storage.animinfo = json.load(open("animinfo.json"))
 storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
@@ -93,7 +101,9 @@ while True:
 		#print(storage.renderorder, "HERE")
 		obj.render()
 	storage.window.blit(storage.spritecanvas,(0,0))
+	storage.window.blit(storage.uicanvas,(0,0))
 	pygame.display.flip()
 	storage.window.fill((0,0,0))
-	storage.spritecanvas.fill((255,0,255))	
+	storage.spritecanvas.fill((255,0,255))
+	storage.uicanvas.fill((255,0,255))	
 	

@@ -1,8 +1,8 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 3.0
-Date: 10/09/2025
+Version: 4.0
+Date: 10/15/2025
 Purpose: Gameplay tools for Project CARIn
 """
 #setup
@@ -10,6 +10,7 @@ import sharedlib
 import storage
 import pygame
 import math
+import copy
 
 #classes
 class object3d(sharedlib.gameobject):
@@ -46,7 +47,8 @@ class object3d(sharedlib.gameobject):
 	def collidecheck(self,tester):
 		pass
 	def interact(self,hitter):
-		print("This is a test of the Emergency Brodcast Cube")
+		#print("This is a test of the Emergency Brodcast Cube")
+		cutsceneplayer("test2")
 	def update(self):
 		self.rendered = False
 		self.vertsort = [self.y,self.z]
@@ -86,28 +88,29 @@ class character(object3d):
 		self.name = name
 	def update(self):
 		super().update()
+		#update locations based on speed
+		self.x += self.speed[0]/100
+		self.y += self.speed[1]/100
+		self.z += self.speed[2]/100
 		self.getpoints()
 		#check collisions with ground
 		self.checkcollide()
 		#natural decrease of speed
 		self.physics()
 		#process whatever actions needed for this character
-		match self.state:
-			case 0:
-				pass
-			case 1:
-				pass
-			case 2:
-				self.followupdates()
-			case 3:
-				self.controlupdates()
-		#update locations based on speed
-		self.x += self.speed[0]/100
-		self.y += self.speed[1]/100
-		self.z += self.speed[2]/100
+		if storage.cutscene == 0:
+			match self.state:
+				case 0:
+					pass
+				case 1:
+					pass
+				case 2:
+					self.followupdates()
+				case 3:
+					self.controlupdates()
 	def animupdate(self):
 		self.animname = "walk"
-		print("AHHHHHH")
+		#print("AHHHHHH")
 		self.framecounter += 1
 		if storage.animinfo[self.name]["anims"][self.animname][self.framenumber][1] < self.framecounter:
 			self.framecounter = 0
@@ -141,6 +144,10 @@ class character(object3d):
 			self.z = 0
 			self.speed[2] = 0
 			self.grounded = True
+	def jump(self):
+		self.grounded = False
+		self.speed[2] = -self.jumpspeed
+
 	def physics(self):
 		if self.speed[0] > 0:
 			self.speed[0] -= self.traction
@@ -166,8 +173,7 @@ class character(object3d):
 					elif self.y > charac.y:
 						self.speed[1] = -self.walkspeed
 					if self.z > charac.z and self.grounded == True:
-						self.grounded = False
-						self.speed[2] = -self.jumpspeed
+						self.jump()
 						
 					
 	def controlupdates(self):
@@ -186,8 +192,7 @@ class character(object3d):
 			self.speed[1] = self.walkspeed
 			self.interactpoint = [self.x+self.w/2,self.y+self.w/2+self.interactd,self.z-self.d/2]
 		if pygame.K_SPACE in storage.newkeys and self.grounded:
-			self.grounded = False
-			self.speed[2] = -self.jumpspeed
+			self.jump()
 		if pygame.K_RETURN in storage.newkeys:
 			for obj in storage.objlist:
 				if isinstance(obj, object3d):
@@ -372,7 +377,7 @@ class mapdisplay(sharedlib.gameobject):
 		if self.y+self.h > storage.cambounds[3]:
 			storage.cambounds[3] = self.y+self.h
 	def render(self):
-		storage.window.blit(self.image, [int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h])
+		storage.window.blit(self.image, [int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h])	
 
 class camera3d(sharedlib.gameobject):
 	def __init__(self,x,y,z):
@@ -382,6 +387,8 @@ class camera3d(sharedlib.gameobject):
 		self.z = z
 		self.target = self
 		storage.camera = self
+	def render(self):
+		pass
 	def update(self):
 		super().update()
 		if pygame.K_3 in storage.newkeys:
@@ -418,12 +425,149 @@ class camera3d(sharedlib.gameobject):
 			self.y = storage.cambounds[3]-storage.screensize[1]
 			self.z = 0
 		storage.camfocus = [self.x,self.y+self.z]
-	
+
+class uiobject(sharedlib.gameobject):
+	def __init__(self):
+		super().__init__()
+		self.mode = "Blank"
+		self.diachars = []
+		#NOTE: the dialogue is never cleared out of this--that's on purpose!
+		#Eventually, I'd like the option to scroll thru a record of past dialogue, either via dialogue windows or a written record.
+		#See Star Wars: KOTOR for an example of this in action.
+		#now, the dialogue trailing off the top...Yeah, that needs fixed.
+		self.diamessages = []
+		self.choices = []
+		self.outcomes = []
+		self.active = 0
+	def update(self):
+		if self.choices != []:
+			if pygame.K_s in storage.newkeys:
+				self.active += 1
+			if pygame.K_w in storage.newkeys:
+				self.active -= 1
+			if self.active == len(self.choices):
+				self.active = 0
+			elif self.active < 0:
+				self.active = len(self.choices) - 1
+			if pygame.K_RETURN in storage.newkeys:
+				print(self.choices[self.active])
+				self.diamessages.append(">"+self.choices[self.active])
+				self.choices = []
+	def adddialogue(self,text):
+		#self.diachars = []
+		#self.diamessages = []
+		self.diamessages.append(text)
+	def addchoice(self,choices,outcomes):
+		self.active = 0
+		self.choices = choices
+		self.outcomes = outcomes
+	def loadui(self,name):
+		if name != "Dialogue" and self.mode == "Dialogue":
+			self.diamessages.append("<END OF LINE>")
+		if name == "Dialogue" and self.mode != "Dialogue":
+			self.diamessages.append("<CONVERSATION STARTED>")
+		self.mode = name
+	def render(self):
+		if self.mode == "Blank":
+			storage.uicanvas.blit(storage.writer.render("This area left intentionally blank",False,(255,255,255)),(0,0))#(self.x,self.y))
+		if self.mode == "Dialogue":
+			pygame.draw.rect(storage.uicanvas,(127,127,0),[160,40,400,400])
+			pygame.draw.rect(storage.uicanvas,(255,255,0),[160,40,400,400],5)
+			size = 0
+			for item in self.diamessages:
+				texttorender = item.split("\n")
+				for line in texttorender:
+					size += storage.writer.size(line)[1]
+				size += 5
+			for index in range(len(self.choices)):
+				size += 5
+				size += storage.writer.size(self.choices[index])[1]
+			for item in self.diamessages:
+				texttorender = item.split("\n")
+				for line in texttorender:
+					storage.uicanvas.blit(storage.writer.render(line,False,(255,255,0)),[165,440-size])
+					size -= storage.writer.size(line)[1]
+				size -= 5
+			for index in range(len(self.choices)):
+				size -= 5
+				if self.active == index:
+					storage.uicanvas.blit(storage.writer.render(">"+self.choices[index],False,(255,255,255)),[165,440-size])
+				else:
+					storage.uicanvas.blit(storage.writer.render(self.choices[index],False,(255,255,0)),[165,440-size])
+				size -= storage.writer.size(self.choices[index])[1]
+				
+			
+
+#as the name suggests, this manages cutscenes. It finds objects in the loaded game cell and gives them instructions, after locking down their free will for a bit.
+#however, this is also to be used for all dialog loading purposes and, if we ever make one, loading the pause menu.
+#I did not set out to make a system where the pause menu was best classified as a "cutscene", but here we are anyway.
+class cutsceneplayer(sharedlib.gameobject):
+	def __init__(self,name):
+		super().__init__()
+		self.blueprint = copy.deepcopy(storage.cutscenes[name])
+		self.itr = 0
+		storage.cutscene = 1
+	def render(self):
+		pass
+	def loadscene(self,name):
+		self.blueprint = copy.deepcopy(storage.cutscenes[name])
+		self.itr = 0
+	def update(self):
+		action = self.blueprint[self.itr]
+		match action[0]:
+			case "ui":
+				target = self.findui()
+				if not target:
+					pass
+				else:
+					getattr(target,action[1][0])(*action[1][1:])
+				self.itr += 1
+			case "char":
+				target = self.findchar(action[1][0])
+				if not target:
+					pass
+				else:
+					getattr(target,action[1][1])(*action[1][2:])
+				self.itr += 1
+			case "loadfromui":
+				target = self.findui()
+				if not target:
+					pass
+				else:
+					self.loadscene(target.outcomes[target.active])
+			case "wait":
+				if action[1] == "enter":
+					if pygame.K_RETURN in storage.newkeys:
+						self.itr += 1
+				else:
+					action[1] -= 1
+					if action[1] == 0:
+						self.itr += 1
+		if len(self.blueprint) == self.itr:
+			self.delete()
+	def findui(self):
+		for obj in storage.objlist:
+			if isinstance(obj,uiobject):
+				return obj
+		return False
+	def findchar(self,name):
+		for obj in storage.objlist:
+			if isinstance(obj,character) and obj.name == name:
+				return obj
+		return False
+	def delete(self):
+		storage.objlist.remove(self)
+		storage.cutscene = 0
+
+class party(sharedlib.gameobject):
+	def __init__(self,burner):
+		for item in storage.partyspawn:
+			obj = globals()[item[0]](*item[1])
 
 #if you saw the earlier comment in the menu.py file about a horrid clunky solution, you already know the deal with this one.
 def loadbluprint(name):
 	storage.objlist = []
-	for item in storage.levels.get(name)+storage.persistobjs+storage.partyspawn:
+	for item in storage.persistobjs+storage.levels.get(name):
 		print(item)
 		obj = globals()[item[0]](*item[1])
 
