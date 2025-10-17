@@ -14,7 +14,7 @@ import copy
 
 #classes
 class object3d(sharedlib.gameobject):
-	def __init__(self,x,y,z,w,h,d):
+	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0):
 		super().__init__()
 		self.x = x
 		self.y = y
@@ -24,12 +24,25 @@ class object3d(sharedlib.gameobject):
 		self.d = d
 		self.speed = [0,0,0]
 		self.grounded = True
-		self.walkspeed = 1
-		self.jumpspeed = 10
 		self.traction = 0.5
 		self.gravity = 1
+
+	def todata(self):
+		return ["object3d",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded]]
+
+	def fromdata(self,data):
+		self.x = data[0]
+		self.y = data[1]
+		self.z = data[2]
+		self.w = data[3]
+		self.h = data[4]
+		self.d = data[5]
+		self.speed = copy.deepcopy(data[6])
+		self.grounded = data[7]
+
 	def render(self):
 		pygame.draw.rect(storage.window, (255,0,0), (int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h))
+
 	def collidepoint(self,point):
 		if self.x <= point[0] <=self.x + self.w:
 			if self.y <= point[1] <= self.y+self.h:
@@ -46,12 +59,15 @@ class object3d(sharedlib.gameobject):
 				
 	def collidecheck(self,tester):
 		pass
+
 	def interact(self,hitter):
 		#print("This is a test of the Emergency Brodcast Cube")
 		cutsceneplayer("test2")
+
 	def update(self):
 		self.rendered = False
 		self.vertsort = [self.y,self.z]
+
 	def getpoints(self):
 		self.center = [self.x+self.w/2, self.y+self.h/2, self.z-self.d/2]
 		self.left = [self.x, self.y + self.h/2, self.z-self.d/2]
@@ -64,12 +80,12 @@ class object3d(sharedlib.gameobject):
 
 
 class character(object3d):
-	def __init__(self,x,y,z,w,h,d,state,name=None):
+	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,state=0,name=None):
 		super().__init__(x,y,z,w,h,d)
 		#the type of character we're dealing with is determined by self.state.
 		#Note that self.state was originally supposed to lock or unlock certain actions (i.e. the second hit of a two-hit combo),
 		#so this may need it's own variable if such a use ever arrives.
-		#States are as follows: 0-NPC Scripted Behaviors. 1-Cutscene Actor. 2-NPC follower. 3-Active Player Character.
+		#States are as follows: 0-NPC Scripted Behaviors. 1-Enemy. 2-NPC follower. 3-Active Player Character.
 		self.state = state
 		if self.state > 1:
 			storage.party.append(self)
@@ -86,6 +102,26 @@ class character(object3d):
 		self.interactd = 50
 		self.interactpoint = [self.x+self.w+self.interactd,self.y+self.w/2,self.z-self.d/2]
 		self.name = name
+
+	def todata(self):
+		return ["character",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.framecounter,self.framenumber,self.name,self.state]]
+
+	def fromdata(self,data):
+		self.x = data[0]
+		self.y = data[1]
+		self.z = data[2]
+		self.w = data[3]
+		self.h = data[4]
+		self.d = data[5]
+		self.speed = copy.deepcopy(data[6])
+		self.grounded = data[7]
+		self.framecounter = data[8]
+		self.framenumber = data[9]
+		self.name = data[10]
+		self.state = data[11]
+		if self.state == 3:
+			storage.camera.target = self
+
 	def update(self):
 		super().update()
 		#update locations based on speed
@@ -108,6 +144,7 @@ class character(object3d):
 					self.followupdates()
 				case 3:
 					self.controlupdates()
+
 	def animupdate(self):
 		self.animname = "walk"
 		#print("AHHHHHH")
@@ -117,6 +154,7 @@ class character(object3d):
 			self.framenumber += 1
 			if self.framenumber >= len(storage.animinfo[self.name]["anims"][self.animname]):
 				self.framenumber = 0
+
 	def render(self):
 		if self.name == None:
 			if self.state == 3:
@@ -144,6 +182,7 @@ class character(object3d):
 			self.z = 0
 			self.speed[2] = 0
 			self.grounded = True
+
 	def jump(self):
 		self.grounded = False
 		self.speed[2] = -self.jumpspeed
@@ -159,6 +198,7 @@ class character(object3d):
 			self.speed[1] += self.traction
 		if self.grounded == False:
 			self.speed[2] += self.gravity
+
 	def followupdates(self):
 		for charac in storage.party:
 			if charac.state == 3:
@@ -173,8 +213,7 @@ class character(object3d):
 					elif self.y > charac.y:
 						self.speed[1] = -self.walkspeed
 					if self.z > charac.z and self.grounded == True:
-						self.jump()
-						
+						self.jump()						
 					
 	def controlupdates(self):
 		#get control updates
@@ -198,12 +237,29 @@ class character(object3d):
 				if isinstance(obj, object3d):
 					if obj != self and obj.collidepoint(self.interactpoint):
 						obj.interact(self)
+		if pygame.K_9 in storage.newkeys:
+			load(storage.savestate)
 
 class collider(object3d):
-	def __init__(self,x,y,z,w,h,d,angle = 0,ascend = 0):
+	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,ascend = 0):
 		super().__init__(x,y,z,w,h,d)
 		self.angle = angle/360*2*math.pi
 		self.ascend = ascend
+
+	def todata(self):
+		return ["collider",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.ascend]]
+
+	def fromdata(self,data):
+		self.x = data[0]
+		self.y = data[1]
+		self.z = data[2]
+		self.w = data[3]
+		self.h = data[4]
+		self.d = data[5]
+		self.speed = copy.deepcopy(data[6])
+		self.grounded = data[7]
+		self.angle = data[8]
+		self.ascend = data[9]
 				
 	def collidepoint(self,basepoint):
 		#for both angle and perpendicular of angle:
@@ -273,6 +329,9 @@ class collider(object3d):
 											int(self.y+self.z-self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),2)
 
 class plat(collider):
+	def todata(self):
+		return ["plat",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.ascend]]
+
 	def collidecheck(self, hitter):
 		if self.angle == 0:
 			if self.collidepoint(hitter.right) != False:
@@ -360,12 +419,25 @@ class plat(collider):
 
 
 class mapdisplay(sharedlib.gameobject):
-	def __init__(self,path,x,y):
+	def __init__(self,path="testmap",x=0,y=0):
 		super().__init__()
 		self.x = x
 		self.y = y
 		self.image = pygame.image.load(f"Assets/graphics/{path}.png").convert()
+		self.path = path
 		self.w,self.h = self.image.get_size()
+
+	def todata(self):
+		return ["mapdisplay",[self.x,self.y,self.w,self.h,self.path]]
+
+	def fromdata(self,data):
+		self.x = data[0]
+		self.y = data[1]
+		self.w = data[2]
+		self.h = data[3]
+		self.path = data[4]
+		self.image = pygame.image.load(f"Assets/graphics/{self.path}.png").convert()
+
 	def update(self):
 		super().update()
 		if self.x < storage.cambounds[0]:
@@ -376,19 +448,30 @@ class mapdisplay(sharedlib.gameobject):
 			storage.cambounds[1] = self.y
 		if self.y+self.h > storage.cambounds[3]:
 			storage.cambounds[3] = self.y+self.h
+
 	def render(self):
 		storage.window.blit(self.image, [int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h])	
 
 class camera3d(sharedlib.gameobject):
-	def __init__(self,x,y,z):
+	def __init__(self,x=0,y=0,z=0):
 		super().__init__()
 		self.x = x
 		self.y = y
 		self.z = z
 		self.target = self
 		storage.camera = self
+
+	def todata(self):
+		return ["camera3d",[self.x,self.y,self.z]]
+
+	def fromdata(self,data):
+		self.x = data[0]
+		self.y = data[1]
+		self.z = data[2]
+
 	def render(self):
 		pass
+
 	def update(self):
 		super().update()
 		if pygame.K_3 in storage.newkeys:
@@ -439,6 +522,18 @@ class uiobject(sharedlib.gameobject):
 		self.choices = []
 		self.outcomes = []
 		self.active = 0
+
+	def todata(self):
+		return ["uiobject",[self.mode,copy.deepcopy(self.diachars),copy.deepcopy(self.diamessages),copy.deepcopy(self.choices),copy.deepcopy(self.outcomes),self.active]]
+
+	def fromdata(self,data):
+		self.mode = data[0]
+		self.diachars = copy.deepcopy(data[1])
+		self.diamessages = copy.deepcopy(data[2])
+		self.choices = copy.deepcopy(data[3])
+		self.outcomes = copy.deepcopy(data[4])
+		self.active = data[5]
+
 	def update(self):
 		if self.choices != []:
 			if pygame.K_s in storage.newkeys:
@@ -450,23 +545,27 @@ class uiobject(sharedlib.gameobject):
 			elif self.active < 0:
 				self.active = len(self.choices) - 1
 			if pygame.K_RETURN in storage.newkeys:
-				print(self.choices[self.active])
+				#print(self.choices[self.active])
 				self.diamessages.append(">"+self.choices[self.active])
 				self.choices = []
+
 	def adddialogue(self,text):
 		#self.diachars = []
 		#self.diamessages = []
 		self.diamessages.append(text)
+
 	def addchoice(self,choices,outcomes):
 		self.active = 0
 		self.choices = choices
 		self.outcomes = outcomes
+
 	def loadui(self,name):
 		if name != "Dialogue" and self.mode == "Dialogue":
 			self.diamessages.append("<END OF LINE>")
 		if name == "Dialogue" and self.mode != "Dialogue":
 			self.diamessages.append("<CONVERSATION STARTED>")
 		self.mode = name
+
 	def render(self):
 		if self.mode == "Blank":
 			storage.uicanvas.blit(storage.writer.render("This area left intentionally blank",False,(255,255,255)),(0,0))#(self.x,self.y))
@@ -480,8 +579,8 @@ class uiobject(sharedlib.gameobject):
 					size += storage.writer.size(line)[1]
 				size += 5
 			for index in range(len(self.choices)):
-				size += 5
 				size += storage.writer.size(self.choices[index])[1]
+				size += 5
 			for item in self.diamessages:
 				texttorender = item.split("\n")
 				for line in texttorender:
@@ -502,16 +601,28 @@ class uiobject(sharedlib.gameobject):
 #however, this is also to be used for all dialog loading purposes and, if we ever make one, loading the pause menu.
 #I did not set out to make a system where the pause menu was best classified as a "cutscene", but here we are anyway.
 class cutsceneplayer(sharedlib.gameobject):
-	def __init__(self,name):
+	def __init__(self,name="test"):
 		super().__init__()
 		self.blueprint = copy.deepcopy(storage.cutscenes[name])
+		self.name = name
 		self.itr = 0
 		storage.cutscene = 1
+
+	def todata(self):
+		return ["cutsceneplayer",[self.name,self.itr]]
+
+	def fromdata(self,data):
+		self.name = data[0]
+		self.blueprint = copy.deepcopy(storage.cutscenes[self.name])
+		self.itr = data[1]
+
 	def render(self):
 		pass
+
 	def loadscene(self,name):
 		self.blueprint = copy.deepcopy(storage.cutscenes[name])
 		self.itr = 0
+
 	def update(self):
 		action = self.blueprint[self.itr]
 		match action[0]:
@@ -545,24 +656,45 @@ class cutsceneplayer(sharedlib.gameobject):
 						self.itr += 1
 		if len(self.blueprint) == self.itr:
 			self.delete()
+
 	def findui(self):
 		for obj in storage.objlist:
 			if isinstance(obj,uiobject):
 				return obj
 		return False
+
 	def findchar(self,name):
 		for obj in storage.objlist:
 			if isinstance(obj,character) and obj.name == name:
 				return obj
 		return False
+
 	def delete(self):
 		storage.objlist.remove(self)
 		storage.cutscene = 0
 
 class party(sharedlib.gameobject):
-	def __init__(self,burner):
+	def __init__(self,burner=0):
 		for item in storage.partyspawn:
 			obj = globals()[item[0]](*item[1])
+
+#save and load functions
+def save():
+	cutsc = storage.cutscene
+	debug = storage.debug
+	partyspawn = storage.partyspawn
+	items = []
+	for item in storage.objlist:
+		items.append(item.todata())
+	return [cutsc,debug,partyspawn,items]
+
+def load(file):
+	storage.cutscene = file[0]
+	storage.debug = file[1]
+	storage.partyspawn = file[2]
+	storage.objlist = []
+	for item in file[3]:
+		globals()[item[0]]().fromdata(item[1])
 
 #if you saw the earlier comment in the menu.py file about a horrid clunky solution, you already know the deal with this one.
 def loadbluprint(name):

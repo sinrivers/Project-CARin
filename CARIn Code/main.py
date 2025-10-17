@@ -54,6 +54,7 @@ storage.spritesheet.set_colorkey((255,0,255))
 genesis = menu.menubutton(0,0,0,0,"printwbutton","")
 #genesis.loadmenu("testmain")
 genesis.loadgame("test2")
+storage.savestate = gameutils.save()
 
 #gameloop
 #while true
