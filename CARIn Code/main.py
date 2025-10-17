@@ -44,66 +44,68 @@ storage.debug = True
 storage.menus = json.load(open("menulayouts.json"))
 #the format for cutscene actions is [<affected element>,<details of effect>,<duration of affect>]
 storage.cutscenes = {
-			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["char",["CARIn","jump"]]],
-			"test2":[["ui",["loadui","Dialogue"]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]}
+            "test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["char",["CARIn","jump"]]],
+            "test2":[["ui",["loadui","Dialogue"]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]}
 storage.uipresets = {}
 storage.levels = json.load(open("celllayouts.json"))
 storage.animinfo = json.load(open("animinfo.json"))
 storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
 storage.spritesheet.set_colorkey((255,0,255))
-genesis = menu.menubutton(0,0,0,0,"printwbutton","")
-#genesis.loadmenu("testmain")
-genesis.loadgame("test2")
+sharedlib.menu_active = True
+sharedlib.loadmenu("testmain")
+
+
 
 #gameloop
-#while true
+#while trueasadsa
 while True:
-	#TODO: calculate deltatime?
+    if sharedlib.menu_active:
+        menu.draw_background()
+    #TODO: calculate deltatime?
 
-	#get input updates from the PIU
-	storage.mousepos = pygame.mouse.get_pos()
-	#TODO: We probably want to make the game resolution-agnostic by having all coordinates be in "units" rather than pixels. This is a spot that will require change.
-	storage.clicks = pygame.mouse.get_pressed()
-	storage.keys = pygame.key.get_pressed()
-	storage.newkeys = []
-	storage.newclicks = []
-	for event in pygame.event.get():
-        	#quit logic
-		if event.type == pygame.QUIT:
-			pygame.quit()
-			quit()
-		elif event.type == pygame.KEYDOWN:
-			#if a key is newly down on this frame, it's important. Add it to newkeys
-			storage.newkeys.append(event.key)
-		elif event.type == pygame.MOUSEBUTTONDOWN:
-			#if a mouse button is newly down on this frame, it's important. Add it to newclicks
-			storage.newclicks.append(event.button)
+    #get input updates from the PIU
+    storage.mousepos = pygame.mouse.get_pos()
+    #TODO: We probably want to make the game resolution-agnostic by having all coordinates be in "units" rather than pixels. This is a spot that will require change.
+    storage.clicks = pygame.mouse.get_pressed()
+    storage.keys = pygame.key.get_pressed()
+    storage.newkeys = []
+    storage.newclicks = []
+    for event in pygame.event.get():
+            #quit logic
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
+        elif event.type == pygame.KEYDOWN:
+            #if a key is newly down on this frame, it's important. Add it to newkeys
+            storage.newkeys.append(event.key)
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            #if a mouse button is newly down on this frame, it's important. Add it to newclicks
+            storage.newclicks.append(event.button)
 
-	#update gameobjects
-	storage.rendered = []
-	for obj in storage.objlist:
-		obj.update()
-	storage.objlist.sort(key=lambda x: x.vertsort)
-	
-	for item in storage.objlist:
-		if storage.rendered == []:
-			storage.rendered.append(item)
-		else:
-			for obj in storage.rendered:
-				index = storage.rendered.index(obj)
-				if item.novertcollide(obj):
-					if item.z > obj.z:
-						break
-			storage.rendered.insert(index,item)
+    #update gameobjects
+    storage.rendered = []
+    for obj in storage.objlist:
+        obj.update()
+    storage.objlist.sort(key=lambda x: x.vertsort)
 
-	#draw to screen
-	for obj in storage.rendered:
-		#print(storage.renderorder, "HERE")
-		obj.render()
-	storage.window.blit(storage.spritecanvas,(0,0))
-	storage.window.blit(storage.uicanvas,(0,0))
-	pygame.display.flip()
-	storage.window.fill((0,0,0))
-	storage.spritecanvas.fill((255,0,255))
-	storage.uicanvas.fill((255,0,255))	
-	
+    for item in storage.objlist:
+        if storage.rendered == []:
+            storage.rendered.append(item)
+        else:
+            for obj in storage.rendered:
+                index = storage.rendered.index(obj)
+                if item.novertcollide(obj):
+                    if item.z > obj.z:
+                        break
+            storage.rendered.insert(index,item)
+
+    #draw to screen
+    for obj in storage.rendered:
+        #print(storage.renderorder, "HERE")
+        obj.render()
+    storage.window.blit(storage.spritecanvas,(0,0))
+    storage.window.blit(storage.uicanvas,(0,0))
+    pygame.display.flip()
+    storage.window.fill((0,0,0))
+    storage.spritecanvas.fill((255,0,255))
+    storage.uicanvas.fill((255,0,255))
