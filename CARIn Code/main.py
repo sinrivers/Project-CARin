@@ -56,6 +56,16 @@ genesis = menu.menubutton(0,0,0,0,"printwbutton","")
 genesis.loadgame("test2")
 storage.savestate = gameutils.save()
 
+#Initialize Background Music
+pygame.mixer.init()
+try:
+	pygame.mixer.music.load("music/video-game-boss-fiight-259885.mp3")
+except pygame.error as e:
+    print(f"Could not load music file: {e}")
+    print("Please ensure 'background_music.mp3' exists in the correct location.")
+pygame.mixer.music.play(-1)
+pygame.mixer.music.set_volume(0.3)
+
 #gameloop
 #while true
 while True:
@@ -107,4 +117,5 @@ while True:
 	storage.window.fill((0,0,0))
 	storage.spritecanvas.fill((255,0,255))
 	storage.uicanvas.fill((255,0,255))	
+
 	
