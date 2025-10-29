@@ -32,7 +32,6 @@ storage.keys = []
 storage.newkeys = []
 
 #create worldstate
-storage.cutscene = 0
 storage.objlist = []
 storage.rendered = []
 storage.persistobjs = [ ["camera3d",[0,0,0]],["uiobject",[]] ]
@@ -47,6 +46,22 @@ storage.cutscenes = {
 			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["char",["CARIn","jump"]]],
 			"test2":[["ui",["loadui","Dialogue"]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]}
 storage.uipresets = {}
+storage.combatactions = {
+			"Nothing":[["wait",60]],
+			"Win":[["wait",60],["wipe",0],["wait",60]],
+			"Kill":[["wait",1],["picktargethostile"],["kill"],["wait",600]]
+			}
+storage.charmenus = {
+			"Default":{
+			"main":[["Fight","Subroutines","Pass"],["Kill",["menu","subroutines"],"Nothing"]],
+			"subroutines":[["Back"],[["menu","main"]]]
+			}
+			}
+#NOTE: Stats are ordered thus: Max HP, Max DATA, Priority, Read, Write, Execute, Obfuscation, Persistance
+storage.charstats = {
+			"Missingno":[10,0,1,1,1,1,1,1],
+			"CARIn":[100,0,5,3,7,5,4,6]
+			}
 storage.levels = json.load(open("celllayouts.json"))
 storage.animinfo = json.load(open("animinfo.json"))
 storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
@@ -55,16 +70,6 @@ genesis = menu.menubutton(0,0,0,0,"printwbutton","")
 #genesis.loadmenu("testmain")
 genesis.loadgame("test2")
 storage.savestate = gameutils.save()
-
-#Initialize Background Music
-pygame.mixer.init()
-try:
-	pygame.mixer.music.load("music/video-game-boss-fiight-259885.mp3")
-except pygame.error as e:
-    print(f"Could not load music file: {e}")
-    print("Please ensure 'background_music.mp3' exists in the correct location.")
-pygame.mixer.music.play(-1)
-pygame.mixer.music.set_volume(0.3)
 
 #gameloop
 #while true
@@ -117,5 +122,4 @@ while True:
 	storage.window.fill((0,0,0))
 	storage.spritecanvas.fill((255,0,255))
 	storage.uicanvas.fill((255,0,255))	
-
 	

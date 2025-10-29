@@ -48,6 +48,7 @@ class object3d(sharedlib.gameobject):
 			if self.y <= point[1] <= self.y+self.h:
 				if self.z >= point[2] >= self.z-self.d:
 					return True
+		return False
 
 	def novertcollide(self,tester):
 		if not isinstance(tester,object3d):
@@ -101,10 +102,14 @@ class character(object3d):
 		self.gravity = 1
 		self.interactd = 50
 		self.interactpoint = [self.x+self.w+self.interactd,self.y+self.w/2,self.z-self.d/2]
+		self.combatactions = []
 		self.name = name
+		self.combatactive = False
+		self.combatactionsindex = 0
+		self.combattarget = None
 
 	def todata(self):
-		return ["character",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.framecounter,self.framenumber,self.name,self.state]]
+		return ["character",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.framecounter,self.framenumber,self.name,self.combatactive,self.state]]
 
 	def fromdata(self,data):
 		self.x = data[0]
@@ -118,7 +123,8 @@ class character(object3d):
 		self.framecounter = data[8]
 		self.framenumber = data[9]
 		self.name = data[10]
-		self.state = data[11]
+		self.combatactive = data[11]
+		self.state = data[12]
 		if self.state == 3:
 			storage.camera.target = self
 
@@ -134,16 +140,35 @@ class character(object3d):
 		#natural decrease of speed
 		self.physics()
 		#process whatever actions needed for this character
-		if storage.cutscene == 0:
+		if storage.ui.actlock == False:
 			match self.state:
 				case 0:
 					pass
 				case 1:
-					pass
+					self.enemyupdates()
 				case 2:
 					self.followupdates()
 				case 3:
 					self.controlupdates()
+		else:
+			if self.combatactive == True:
+				if self.combatactions == []:
+					pass
+					"""if pygame.K_RETURN in storage.newkeys:
+						self.combattarget = None
+						action = "Nothing"
+						if self.state > 1:
+							action = storage.ui.outcomes[storage.ui.active]
+						self.combatactions = copy.deepcopy(storage.combatactions[action])"""
+				else:
+					doit = self.combatactions[self.combatactionsindex][0]
+					getattr(self,doit)()
+
+					if self.combatactionsindex == len(self.combatactions):
+						self.combatactive = False
+						self.combattarget = None
+						self.combatactions = []
+						self.combatactionsindex = 0
 
 	def animupdate(self):
 		self.animname = "walk"
@@ -161,6 +186,10 @@ class character(object3d):
 				pygame.draw.rect(storage.spritecanvas, (0,0,100), (int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h),2)
 				pygame.draw.rect(storage.spritecanvas, (0,0,155), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h+self.d))
 				pygame.draw.rect(storage.spritecanvas, (0,0,255), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h))
+			elif self.state == 1:
+				pygame.draw.rect(storage.spritecanvas, (100,0,0), (int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h),2)
+				pygame.draw.rect(storage.spritecanvas, (155,0,0), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h+self.d))
+				pygame.draw.rect(storage.spritecanvas, (255,0,0), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h))
 			else:
 				pygame.draw.rect(storage.spritecanvas, (0,100,100), (int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h),2)
 				pygame.draw.rect(storage.spritecanvas, (0,155,155), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h+self.d))
@@ -183,6 +212,16 @@ class character(object3d):
 			self.speed[2] = 0
 			self.grounded = True
 
+	def collidecheck(self,hitter):
+		if self.state == 1 and hitter.state == 3:
+			if self.collidepoint(hitter.center) != False:
+				print(self.state)
+				self.delete()
+				storage.savestate = save()
+				sharedlib.loadgame("fighttest")
+			else:
+				pass
+
 	def jump(self):
 		self.grounded = False
 		self.speed[2] = -self.jumpspeed
@@ -203,7 +242,7 @@ class character(object3d):
 		for charac in storage.party:
 			if charac.state == 3:
 				dist = (charac.x-self.x)**2+(charac.y-self.y)**2+(charac.z-self.z)**2
-				if dist > 5125:
+				if dist < 2*5125:
 					if self.x < charac.x:
 						self.speed[0] = self.walkspeed
 					elif self.x > charac.x:
@@ -213,7 +252,23 @@ class character(object3d):
 					elif self.y > charac.y:
 						self.speed[1] = -self.walkspeed
 					if self.z > charac.z and self.grounded == True:
-						self.jump()						
+						self.jump()
+	def NPCupdates(self):
+		pass
+	def enemyupdates(self):
+		self.NPCupdates()
+		for charac in storage.party:
+			if charac.state == 3:
+				dist = (charac.x-self.x)**2+(charac.y-self.y)**2+(charac.z-self.z)**2
+				if True:
+					if self.x < charac.x:
+						self.speed[0] = self.walkspeed
+					elif self.x > charac.x:
+						self.speed[0] = -self.walkspeed
+					if self.y < charac.y:
+						self.speed[1] = self.walkspeed
+					elif self.y > charac.y:
+						self.speed[1] = -self.walkspeed
 					
 	def controlupdates(self):
 		#get control updates
@@ -239,6 +294,77 @@ class character(object3d):
 						obj.interact(self)
 		if pygame.K_9 in storage.newkeys:
 			load(storage.savestate)
+		
+	def wait(self):
+		self.combatactions[self.combatactionsindex][1] -= 1
+		if self.combatactions[self.combatactionsindex][1] == 0:
+			self.combatactionsindex += 1
+
+	def getcombatlocation(self):
+		target = findcombatman()
+		if target != False and target.fighters != []:
+			allies = 0
+			selforder = 0
+			for char in target.fighters:
+				if char == self:
+					selforder = allies
+				if self.state < 2 and char.state < 2:
+					allies += 1
+				elif self.state in [3,2] and char.state in [3,2]:
+					allies += 1
+			elbowroom = storage.screensize[1]/allies
+			offset = elbowroom * selforder + elbowroom/2
+			if self.state > 1:
+				return [50, offset]
+			else:
+				return [670-self.w,offset]
+		else:
+			return [0,0]
+
+	def picktargethostile(self):
+		target = findcombatman()
+		if self.combattarget == None:
+			for item in target.fighters:
+				if item.state == 1:
+					self.combattarget = item
+					break
+
+		if pygame.K_RETURN in storage.newkeys:
+			self.combatactionsindex += 1
+		elif pygame.K_DOWN in storage.newkeys:
+			index = index(target.fighters,self.combattarget)
+			for i in range(index+1,len(target.fighters)):
+				if target.fighters[i].state < 2:
+					self.combattarget = target.fighters[i]
+					break
+		elif pygame.K_UP in storage.newkeys:
+			index = index(target.fighters,self.combattarget)
+			for i in range(index,0,-1):
+				if target.fighters[i].state == 1:
+					self.combattarget = target.fighters[i]
+					break
+		pygame.draw.rect(storage.spritecanvas,(0,255,255),[self.combattarget.x-10,self.combattarget.y-10,self.combattarget.w+20,self.combattarget.h+20])
+
+	def wipe(self):
+		target = findcombatman()
+		action = "wait"
+		if not target:
+			pass
+		else:
+			for item in target.fighters:
+				if item not in storage.party:
+					item.delete()
+		self.combatactionsindex += 1
+	def kill(self):
+		print("Why are we still here? Just to suffer?")
+		self.combattarget.delete()
+		self.combatactionsindex += 1
+	def suicide(self):
+		self.delete()
+		self.combatactive = False
+	def heal(self):
+		self.combattarget.HP = self.combattarget.HPmax
+		self.combatactionsindex += 1
 
 class collider(object3d):
 	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,ascend = 0):
@@ -522,6 +648,10 @@ class uiobject(sharedlib.gameobject):
 		self.choices = []
 		self.outcomes = []
 		self.active = 0
+		self.submenu = "main"
+		self.combattant = None
+		self.actlock = False
+		storage.ui = self
 
 	def todata(self):
 		return ["uiobject",[self.mode,copy.deepcopy(self.diachars),copy.deepcopy(self.diamessages),copy.deepcopy(self.choices),copy.deepcopy(self.outcomes),self.active]]
@@ -532,6 +662,9 @@ class uiobject(sharedlib.gameobject):
 		self.diamessages = copy.deepcopy(data[2])
 		self.choices = copy.deepcopy(data[3])
 		self.outcomes = copy.deepcopy(data[4])
+		self.combattant = None
+		self.actlock = False
+		self.submenu = "main"
 		self.active = data[5]
 
 	def update(self):
@@ -546,18 +679,39 @@ class uiobject(sharedlib.gameobject):
 				self.active = len(self.choices) - 1
 			if pygame.K_RETURN in storage.newkeys:
 				#print(self.choices[self.active])
-				self.diamessages.append(">"+self.choices[self.active])
-				self.choices = []
+				if self.mode == "Dialogue":
+					self.diamessages.append(">"+self.choices[self.active])
+					self.choices = []
+				elif self.mode == "Combat":
+					if self.outcomes[self.active][0] == "menu":
+						self.loadcombatmenu(self.outcomes[self.active][1])
+					else:
+						if self.combattant.state > 1:
+							#self.combattant.combattarget = None
+							action = self.outcomes[self.active]
+						else:
+							action = "Nothing"
+						self.combattant.combatactions = copy.deepcopy(storage.combatactions[action])
 
 	def adddialogue(self,text):
 		#self.diachars = []
 		#self.diamessages = []
 		self.diamessages.append(text)
 
+	def loadcombatmenu(self,menu):
+		self.submenu = menu
+		self.actlock = True
+		self.active = 0
+		self.choices = copy.deepcopy(storage.charmenus["Default"][self.submenu][0])
+		self.outcomes = copy.deepcopy(storage.charmenus["Default"][self.submenu][1])
+
 	def addchoice(self,choices,outcomes):
 		self.active = 0
 		self.choices = choices
 		self.outcomes = outcomes
+	
+	def setcombattant(self,combattant):
+		self.combattant = combattant
 
 	def loadui(self,name):
 		if name != "Dialogue" and self.mode == "Dialogue":
@@ -569,6 +723,22 @@ class uiobject(sharedlib.gameobject):
 	def render(self):
 		if self.mode == "Blank":
 			storage.uicanvas.blit(storage.writer.render("This area left intentionally blank",False,(255,255,255)),(0,0))#(self.x,self.y))
+
+		if self.mode == "Combat":
+			size = 0
+			if self.combattant.combatactions == []:
+				pygame.draw.rect(storage.uicanvas,(127,127,0),[160,40,400,400])
+				pygame.draw.rect(storage.uicanvas,(255,255,0),[160,40,400,400],5)
+				storage.uicanvas.blit(storage.writer.render(f"it is {self.combattant.name}'s turn.",False,(255,255,255)),[165,45])
+				size += storage.writer.size(f"it is {self.combattant.name}'s turn.")[1]
+				for index in range(len(self.choices)):
+					size += 5
+					if self.active == index:
+						storage.uicanvas.blit(storage.writer.render(">"+self.choices[index],False,(255,255,255)),[165,45+size])
+					else:
+						storage.uicanvas.blit(storage.writer.render(self.choices[index],False,(255,255,0)),[165,45+size])
+					size += storage.writer.size(self.choices[index])[1]
+
 		if self.mode == "Dialogue":
 			pygame.draw.rect(storage.uicanvas,(127,127,0),[160,40,400,400])
 			pygame.draw.rect(storage.uicanvas,(255,255,0),[160,40,400,400],5)
@@ -606,7 +776,7 @@ class cutsceneplayer(sharedlib.gameobject):
 		self.blueprint = copy.deepcopy(storage.cutscenes[name])
 		self.name = name
 		self.itr = 0
-		storage.cutscene = 1
+		storage.ui.actlock = True
 
 	def todata(self):
 		return ["cutsceneplayer",[self.name,self.itr]]
@@ -671,7 +841,96 @@ class cutsceneplayer(sharedlib.gameobject):
 
 	def delete(self):
 		storage.objlist.remove(self)
-		storage.cutscene = 0
+		storage.ui.actlock = False
+
+class combatmanager(sharedlib.gameobject):
+	def __init__(self):
+		super().__init__()
+		#NOTE: this requires the combat manager to be spawned AFTER all other gameobjects, so that it catches them.
+		#Maybe we should add a clause to character spawining to drop newcomers in here if we're in combat mode?
+		self.fighters = []
+		for obj in storage.objlist:
+			if isinstance(obj,character):
+				self.fighters.append(obj)
+		self.turn = 0
+		storage.ui.setcombattant(self.fighters[self.turn])
+		storage.ui.loadui("Combat")
+		storage.ui.loadcombatmenu("main")
+		storage.ui.actlock = True
+
+	def todata(self):
+		return ["combatmanager",[self.fighters,self.turn]]
+
+	def fromdata(self,data):
+		self.name = data[0]
+		self.blueprint = copy.deepcopy(storage.cutscenes[self.name])
+		self.turn = data[1]
+		storage.ui.setcombattant(self.fighters[self.turn])
+		storage.ui.loadui("Combat")
+		storage.ui.loadcombatmenu("main")
+		storage.ui.actlock = True
+
+	def findui(self):
+		for obj in storage.objlist:
+			if isinstance(obj,uiobject):
+				return obj
+		return False
+
+	def render(self):
+		pass
+
+	def update(self):
+		combattant = self.fighters[self.turn]
+		if combattant.combatactive == False:
+			win = True
+			lose = True
+			index = 0
+			while index < len(self.fighters):
+				obj = self.fighters[index]
+				if obj.combatactive == False:
+					pos = obj.getcombatlocation()
+					if [obj.x,obj.y] != pos:
+						obj.x,obj.y = pos[0],pos[1]
+				if obj not in storage.objlist:
+					self.fighters.remove(obj)
+					index -= 1
+				elif obj.state < 2:
+					win = False
+				elif obj.state in [3,2]:
+					lose = False
+				index += 1
+			if win == True:
+				self.win()
+			elif lose == True:
+				self.gameover()
+			else:
+				self.turn += 1
+				if self.turn >= len(self.fighters):
+					self.turn = 0
+				combattant = self.fighters[self.turn]
+				combattant.combatactive = True
+				storage.ui.setcombattant(combattant)
+				if combattant.state > 1:
+					storage.ui.loadui("Combat")
+					storage.ui.loadcombatmenu("main")
+					storage.ui.actlock = True
+				else:
+					combattant.combatactions = [["wait",60]]
+
+	def gameover(self):
+		sharedlib.loadmenu("testmain")
+
+	def win(self):
+		storage.ui.loadui("Blank")
+		print("#winning")
+		load(storage.savestate)
+
+	def findchar(self,name):
+		for obj in storage.objlist:
+			if isinstance(obj,character) and obj.name == name:
+				return obj
+		return False
+	
 
 class party(sharedlib.gameobject):
 	def __init__(self,burner=0):
@@ -680,21 +939,30 @@ class party(sharedlib.gameobject):
 
 #save and load functions
 def save():
-	cutsc = storage.cutscene
 	debug = storage.debug
 	partyspawn = storage.partyspawn
 	items = []
 	for item in storage.objlist:
 		items.append(item.todata())
-	return [cutsc,debug,partyspawn,items]
+	return [debug,partyspawn,items]
 
 def load(file):
-	storage.cutscene = file[0]
-	storage.debug = file[1]
-	storage.partyspawn = file[2]
+	storage.debug = file[0]
+	storage.partyspawn = file[1]
 	storage.objlist = []
-	for item in file[3]:
+	for item in file[2]:
 		globals()[item[0]]().fromdata(item[1])
+
+def findui():
+	for obj in storage.objlist:
+		if isinstance(obj,uiobject):
+			return obj
+	return False
+def findcombatman():
+	for obj in storage.objlist:
+		if isinstance(obj,combatmanager):
+			return obj
+	return False
 
 #if you saw the earlier comment in the menu.py file about a horrid clunky solution, you already know the deal with this one.
 def loadbluprint(name):
