@@ -1,8 +1,8 @@
 """
 Filename: main.py
 Author(s): Taliesin Reese
-Version: 4.0
-Date: 10/15/2025
+Version: 6.0
+Date: 11/4/2025
 Purpose: master file for Project CARIn
 """
 
@@ -34,6 +34,7 @@ storage.newkeys = []
 #create worldstate
 storage.objlist = []
 storage.rendered = []
+storage.carryovers = []
 storage.persistobjs = [ ["camera3d",[0,0,0]],["uiobject",[]] ]
 storage.partyspawn = [ ["character",[250,345,-500,50,50,50,3,"CARIn"]] ]
 storage.party = []
@@ -42,25 +43,47 @@ storage.cambounds = [0,0,storage.screensize[0],storage.screensize[1]]
 storage.debug = True
 storage.menus = json.load(open("menulayouts.json"))
 #the format for cutscene actions is [<affected element>,<details of effect>,<duration of affect>]
+storage.missionprogress = {
+				"main":0
+			}
 storage.cutscenes = {
 			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["char",["CARIn","jump"]]],
-			"test2":[["ui",["loadui","Dialogue"]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]}
+			"test2":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","CARIn",0]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]
+		}
 storage.uipresets = {}
 storage.combatactions = {
 			"Nothing":[["wait",60]],
 			"Win":[["wait",60],["wipe",0],["wait",60]],
-			"Kill":[["wait",1],["picktargethostile"],["kill"],["wait",600]]
+			"staffattack":[["wait",1],["picktargethostile"],["staffattack"],["wait",600]],
+			"PsychUp":[["checkavailabledata",10],["alterstat","spentdata",10],["alterstat","write",10],["addtimedfx","turnend",120,"alterstat",["write",-10]],["wait",600]],
+			"Runmaster":[["runmaster"]]
 			}
 storage.charmenus = {
 			"Default":{
-			"main":[["Fight","Subroutines","Pass"],["Kill",["menu","subroutines"],"Nothing"]],
-			"subroutines":[["Back"],[["menu","main"]]]
+			"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
+			"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
+			"subroutines":[["Back"],[["menu","main"]]]},
+			"CARIn":{
+			"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
+			"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
+			"subroutines":[["Back","Psych Up"],[["menu","main"],"PsychUp"]]}
+
+		}
+#NOTE: Stats are ordered thus: Max HP, Max DATA, Priority, Read, Write, Execute, Obfuscation, Persistance. modstats has extra slots at the end for damage and spent data.
+#NOTE 2: basestats is character's default stats. This is NEVER to be altered in-game. modstats is for modifications via buffs, level-ups, damage, etc.
+storage.basestats = {
+			"Missingno":[999,0,1,1,1,1,1,1],
+			"CARIn":[100,50,5,3,7,5,4,6]
 			}
+storage.modstats = {
+			"Missingno":[0,0,0,0,0,0,0,0,0,0],
+			"CARIn":[0,0,0,0,0,0,0,0,0,0]
 			}
-#NOTE: Stats are ordered thus: Max HP, Max DATA, Priority, Read, Write, Execute, Obfuscation, Persistance
-storage.charstats = {
-			"Missingno":[10,0,1,1,1,1,1,1],
-			"CARIn":[100,0,5,3,7,5,4,6]
+#NOTE: format for timed effects will be [triggertype,triggermods,function,arguments]
+#NOTE 2: triggertype can be: turnstart or turnend (both time-based), endofcombat, hit, <add more here later IDK>
+storage.timedfx = {
+			"Missingno":[],
+			"CARIn":[]
 			}
 storage.levels = json.load(open("celllayouts.json"))
 storage.animinfo = json.load(open("animinfo.json"))
@@ -70,6 +93,8 @@ genesis = menu.menubutton(0,0,0,0,"printwbutton","")
 #genesis.loadmenu("testmain")
 genesis.loadgame("test2")
 storage.savestate = gameutils.save()
+storage.runstate = gameutils.save()
+storage.winstate = gameutils.save()
 
 #gameloop
 #while true

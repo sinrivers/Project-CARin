@@ -1,8 +1,8 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 4.0
-Date: 10/15/2025
+Version: 6.0
+Date: 11/4/2025
 Purpose: Gameplay tools for Project CARIn
 """
 #setup
@@ -11,6 +11,8 @@ import storage
 import pygame
 import math
 import copy
+import random
+import ais
 
 #classes
 class object3d(sharedlib.gameobject):
@@ -83,6 +85,8 @@ class object3d(sharedlib.gameobject):
 class character(object3d):
 	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,state=0,name=None):
 		super().__init__(x,y,z,w,h,d)
+		self.name = name
+		self.pullglobalstats()
 		#the type of character we're dealing with is determined by self.state.
 		#Note that self.state was originally supposed to lock or unlock certain actions (i.e. the second hit of a two-hit combo),
 		#so this may need it's own variable if such a use ever arrives.
@@ -96,22 +100,28 @@ class character(object3d):
 		self.framecounter = 0
 		self.framenumber = 0
 		self.grounded = True
-		self.walkspeed = 10
-		self.jumpspeed = 200
+		self.walkspeed = 2 * self.getstat("priority")
+		self.jumpspeed = 40 * self.getstat("priority")
+		if self.name == None or not hasattr(ais,self.name):
+			self.combatAI = getattr(ais, "Missingno")
+		else:
+			self.combatAI = getattr(ais, self.name)
 		self.traction = 1
 		self.gravity = 1
 		self.interactd = 50
 		self.interactpoint = [self.x+self.w+self.interactd,self.y+self.w/2,self.z-self.d/2]
 		self.combatactions = []
-		self.name = name
 		self.combatactive = False
 		self.combatactionsindex = 0
-		self.combattarget = None
+		self.combattarget = []
+		self.iframes = 0
 
 	def todata(self):
-		return ["character",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.framecounter,self.framenumber,self.name,self.combatactive,self.state]]
+		self.writeglobalstats()
+		return ["character",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.framecounter,self.framenumber,self.name,self.combatactive,self.state,self.iframes]]
 
 	def fromdata(self,data):
+		#NOTE: add updateable stats later
 		self.x = data[0]
 		self.y = data[1]
 		self.z = data[2]
@@ -125,11 +135,20 @@ class character(object3d):
 		self.name = data[10]
 		self.combatactive = data[11]
 		self.state = data[12]
+		self.iframes = data[13]
+		self.pullglobalstats()
+		self.walkspeed = 2 * self.getstat("priority")
+		self.jumpspeed = 40 * self.getstat("priority")
+		if self.name == None or not hasattr(ais,self.name):
+			self.combatAI = getattr(ais, "Missingno")
+		else:
+			self.combatAI = getattr(ais, self.name)
 		if self.state == 3:
 			storage.camera.target = self
 
 	def update(self):
 		super().update()
+		self.iframes -= 1
 		#update locations based on speed
 		self.x += self.speed[0]/100
 		self.y += self.speed[1]/100
@@ -139,8 +158,15 @@ class character(object3d):
 		self.checkcollide()
 		#natural decrease of speed
 		self.physics()
+
 		#process whatever actions needed for this character
 		if storage.ui.actlock == False:
+			for item in self.timedfx:
+				if item[0] in ["turnstart","turnend","time"]:
+					item[1] -= 1
+					if item[1] <= 0:
+						self.timedfx.remove(item)
+						getattr(self,item[2])(*item[3])
 			match self.state:
 				case 0:
 					pass
@@ -152,27 +178,116 @@ class character(object3d):
 					self.controlupdates()
 		else:
 			if self.combatactive == True:
-				if self.combatactions == []:
-					pass
-					"""if pygame.K_RETURN in storage.newkeys:
-						self.combattarget = None
-						action = "Nothing"
-						if self.state > 1:
-							action = storage.ui.outcomes[storage.ui.active]
-						self.combatactions = copy.deepcopy(storage.combatactions[action])"""
-				else:
+				if self.combatactions != []:
 					doit = self.combatactions[self.combatactionsindex][0]
 					getattr(self,doit)()
-
+				#NOTE: It is stupid that this second check has to be here, but it does. Otherwise, we can't back out of target selection and stuff like that. Can somebody propose a better solution? Who am I kidding, nobody else reads these comments...
+				if self.combatactions != []:
 					if self.combatactionsindex == len(self.combatactions):
 						self.combatactive = False
-						self.combattarget = None
+						self.combattarget = []
 						self.combatactions = []
 						self.combatactionsindex = 0
+	def getstat(self,stat):
+		if stat == "maxhp":
+			index = 0
+		elif stat == "maxdata":
+			index = 1
+		elif stat == "priority":
+			index = 2
+		elif stat == "read":
+			index = 3
+		elif stat == "write":
+			index = 4
+		elif stat == "execute":
+			index = 5
+		elif stat == "obfuscation":
+			index = 6
+		elif stat == "persistence":
+			index = 7
+		elif stat == "damage":
+			return self.modstats[8]
+		elif stat == "spentdata":
+			return self.modstats[9]
+		return self.basestats[index] + self.modstats[index]
+
+	def alterstat(self,stat = None,amt = None):
+		if stat == None:
+			stat = self.combatactions[self.combatactionsindex][1]
+		if amt == None:
+			amt = self.combatactions[self.combatactionsindex][2]
+		if stat == "maxHP":
+			index = 0
+		elif stat == "maxDATA":
+			index = 1
+		elif stat == "priority":
+			index = 2
+		elif stat == "read":
+			index = 3
+		elif stat == "write":
+			index = 4
+		elif stat == "execute":
+			index = 5
+		elif stat == "obfuscation":
+			index = 6
+		elif stat == "persistence":
+			index = 7
+		elif stat == "damage":
+			index = 8
+		elif stat == "spentdata":
+			index = 9
+		self.modstats[index] += amt
+		if self.combatactive:
+			self.combatactionsindex += 1
+
+	def pullglobalstats(self):
+		if self.name == None:
+			self.basestats = copy.deepcopy(storage.basestats["Missingno"])
+			self.modstats = copy.deepcopy(storage.modstats["Missingno"])
+			self.timedfx = copy.deepcopy(storage.timedfx["Missingno"])
+		else:
+			self.basestats = copy.deepcopy(storage.basestats[self.name])
+			self.modstats = copy.deepcopy(storage.modstats[self.name])
+			self.timedfx = copy.deepcopy(storage.timedfx[self.name])
+
+	def writeglobalstats(self):
+		if self.name == None:
+			storage.basestats["Missingno"] = copy.deepcopy(self.basestats)
+			storage.modstats["Missingno"] = copy.deepcopy(self.modstats)
+			storage.timedfx["Missingno"] = copy.deepcopy(self.timedfx)
+		else:
+			storage.basestats[self.name] = copy.deepcopy(self.basestats)
+			storage.modstats[self.name] = copy.deepcopy(self.modstats)
+			storage.timedfx[self.name] = copy.deepcopy(self.timedfx)
+
+	def addtimedfx(self,triggertype = None,triggermods = None,function = None,arguments = None):
+		if triggertype == None:
+			triggertype = self.combatactions[self.combatactionsindex][1]
+		if triggermods == None:
+			triggermods = self.combatactions[self.combatactionsindex][2]
+		if function == None:
+			function = self.combatactions[self.combatactionsindex][3]
+		if arguments == None:
+			arguments = self.combatactions[self.combatactionsindex][4]
+		self.timedfx.append([triggertype,triggermods,function,arguments])
+		if self.combatactive:
+			self.combatactionsindex += 1
+
+	def checkavailabledata(self,num = None):
+		if num == None:
+			num = self.combatactions[self.combatactionsindex][1]
+		if num > self.getstat("maxdata") - self.getstat("spentdata"):
+			if self.state > 1:
+				self.combatactions = []
+				self.combatactionsindex = 0
+			else:
+				self.combatAI(self)
+		else:
+			self.combatactionsindex += 1
+			
 
 	def animupdate(self):
 		self.animname = "walk"
-		#print("AHHHHHH")
 		self.framecounter += 1
 		if storage.animinfo[self.name]["anims"][self.animname][self.framenumber][1] < self.framecounter:
 			self.framecounter = 0
@@ -213,14 +328,16 @@ class character(object3d):
 			self.grounded = True
 
 	def collidecheck(self,hitter):
-		if self.state == 1 and hitter.state == 3:
-			if self.collidepoint(hitter.center) != False:
-				print(self.state)
-				self.delete()
-				storage.savestate = save()
-				sharedlib.loadgame("fighttest")
-			else:
-				pass
+		if self.iframes <= 0:
+			if self.state == 1 and hitter.state == 3:
+				if self.collidepoint(hitter.center) != False:
+					self.iframes = 300
+					storage.runstate = save()
+					self.delete()
+					storage.winstate = save()
+					sharedlib.loadgame("fighttest")
+				else:
+					pass
 
 	def jump(self):
 		self.grounded = False
@@ -257,18 +374,19 @@ class character(object3d):
 		pass
 	def enemyupdates(self):
 		self.NPCupdates()
-		for charac in storage.party:
-			if charac.state == 3:
-				dist = (charac.x-self.x)**2+(charac.y-self.y)**2+(charac.z-self.z)**2
-				if True:
-					if self.x < charac.x:
-						self.speed[0] = self.walkspeed
-					elif self.x > charac.x:
-						self.speed[0] = -self.walkspeed
-					if self.y < charac.y:
-						self.speed[1] = self.walkspeed
-					elif self.y > charac.y:
-						self.speed[1] = -self.walkspeed
+		if self.iframes <= 0:
+			for charac in storage.party:
+				if charac.state == 3:
+					dist = (charac.x-self.x)**2+(charac.y-self.y)**2+(charac.z-self.z)**2
+					if True:
+						if self.x < charac.x:
+							self.speed[0] = self.walkspeed
+						elif self.x > charac.x:
+							self.speed[0] = -self.walkspeed
+						if self.y < charac.y:
+							self.speed[1] = self.walkspeed
+						elif self.y > charac.y:
+							self.speed[1] = -self.walkspeed
 					
 	def controlupdates(self):
 		#get control updates
@@ -294,7 +412,34 @@ class character(object3d):
 						obj.interact(self)
 		if pygame.K_9 in storage.newkeys:
 			load(storage.savestate)
-		
+
+	def runmaster(self):
+		target = findcombatman()
+		target.aborted = True
+		for guy in target.fighters:
+			if self.state in [3,2] and guy.state in [3,2]:
+				guy.combatactions = [["goto",[0-guy.w,guy.y]],["suicide"]]
+				guy.combatactionsindex = 0
+				guy.combatactive = True
+
+	def staffattack(self):
+		damage = 15 * (self.getstat("write")-self.combattarget[0].getstat("persistence"))
+		print(damage)
+		self.combattarget[0].alterstat("damage",damage)
+		for item in self.combattarget[0].timedfx:
+			if item[0] == "hit":
+				self.combattarget[0].timedfx.remove(item)
+				getattr(self.combattarget[0],item[2])(*item[3])
+		if self.combattarget[0].getstat("damage") >= self.combattarget[0].getstat("maxhp"):
+			self.combattarget[0].suicide()
+		self.combattarget = self.combattarget[1:]
+		self.combatactionsindex += 1
+	
+
+	#THIS IS A PLACEHOLDER, FIX LATER
+	def goto(self):
+		self.combatactionsindex += 1
+	
 	def wait(self):
 		self.combatactions[self.combatactionsindex][1] -= 1
 		if self.combatactions[self.combatactionsindex][1] == 0:
@@ -323,27 +468,33 @@ class character(object3d):
 
 	def picktargethostile(self):
 		target = findcombatman()
-		if self.combattarget == None:
+		if self.combattarget == []:
 			for item in target.fighters:
 				if item.state == 1:
-					self.combattarget = item
+					self.combattarget.append(item)
 					break
 
 		if pygame.K_RETURN in storage.newkeys:
 			self.combatactionsindex += 1
+		elif pygame.K_BACKSPACE in storage.newkeys:
+			self.combatactions = []
+			self.combatactionsindex = 0
 		elif pygame.K_DOWN in storage.newkeys:
-			index = index(target.fighters,self.combattarget)
+			index = index(target.fighters,self.combattarget[-1])
 			for i in range(index+1,len(target.fighters)):
 				if target.fighters[i].state < 2:
-					self.combattarget = target.fighters[i]
+					self.combattarget.append(target.fighters[i])
 					break
 		elif pygame.K_UP in storage.newkeys:
-			index = index(target.fighters,self.combattarget)
+			index = index(target.fighters,self.combattarget[-1])
 			for i in range(index,0,-1):
 				if target.fighters[i].state == 1:
-					self.combattarget = target.fighters[i]
+					self.combattarget.append(target.fighters[i])
 					break
-		pygame.draw.rect(storage.spritecanvas,(0,255,255),[self.combattarget.x-10,self.combattarget.y-10,self.combattarget.w+20,self.combattarget.h+20])
+		for item in self.combattarget[:-1]:
+			pygame.draw.rect(storage.spritecanvas,(255,255,0),[item.x-10,item-10,item.w+20,item.h+20],5)
+		pygame.draw.rect(storage.spritecanvas,(255,255,255),[self.combattarget[-1].x-10,self.combattarget[-1].y-10,self.combattarget[-1].w+20,self.combattarget[-1].h+20],5)
+		
 
 	def wipe(self):
 		target = findcombatman()
@@ -357,14 +508,13 @@ class character(object3d):
 		self.combatactionsindex += 1
 	def kill(self):
 		print("Why are we still here? Just to suffer?")
-		self.combattarget.delete()
+		self.combattarget[0].delete()
+		self.combattarget = self.combattarget[1:]
 		self.combatactionsindex += 1
 	def suicide(self):
 		self.delete()
 		self.combatactive = False
-	def heal(self):
-		self.combattarget.HP = self.combattarget.HPmax
-		self.combatactionsindex += 1
+	
 
 class collider(object3d):
 	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,ascend = 0):
@@ -687,14 +837,11 @@ class uiobject(sharedlib.gameobject):
 						self.loadcombatmenu(self.outcomes[self.active][1])
 					else:
 						if self.combattant.state > 1:
-							#self.combattant.combattarget = None
+							#self.combattant.combattarget = []
 							action = self.outcomes[self.active]
-						else:
-							action = "Nothing"
-						self.combattant.combatactions = copy.deepcopy(storage.combatactions[action])
+							self.combattant.combatactions = copy.deepcopy(storage.combatactions[action])
 
 	def adddialogue(self,text):
-		#self.diachars = []
 		#self.diamessages = []
 		self.diamessages.append(text)
 
@@ -702,8 +849,12 @@ class uiobject(sharedlib.gameobject):
 		self.submenu = menu
 		self.actlock = True
 		self.active = 0
-		self.choices = copy.deepcopy(storage.charmenus["Default"][self.submenu][0])
-		self.outcomes = copy.deepcopy(storage.charmenus["Default"][self.submenu][1])
+		if self.combattant.name not in storage.charmenus:
+			self.choices = copy.deepcopy(storage.charmenus["Default"][self.submenu][0])
+			self.outcomes = copy.deepcopy(storage.charmenus["Default"][self.submenu][1])
+		else:
+			self.choices = copy.deepcopy(storage.charmenus[self.combattant.name][self.submenu][0])
+			self.outcomes = copy.deepcopy(storage.charmenus[self.combattant.name][self.submenu][1])
 
 	def addchoice(self,choices,outcomes):
 		self.active = 0
@@ -713,9 +864,17 @@ class uiobject(sharedlib.gameobject):
 	def setcombattant(self,combattant):
 		self.combattant = combattant
 
+	def setspeaker(self,name,side = 0,emote="Neutral"):
+		for item in self.diachars:
+			if name == item[0]:
+				item[1] = emote
+				return
+		self.diachars.append([name,emote,side])
+
 	def loadui(self,name):
 		if name != "Dialogue" and self.mode == "Dialogue":
 			self.diamessages.append("<END OF LINE>")
+			self.diachars = []
 		if name == "Dialogue" and self.mode != "Dialogue":
 			self.diamessages.append("<CONVERSATION STARTED>")
 		self.mode = name
@@ -742,6 +901,30 @@ class uiobject(sharedlib.gameobject):
 		if self.mode == "Dialogue":
 			pygame.draw.rect(storage.uicanvas,(127,127,0),[160,40,400,400])
 			pygame.draw.rect(storage.uicanvas,(255,255,0),[160,40,400,400],5)
+			itrL = 0
+			itrR = 0
+			numL = 0
+			for item in self.diachars:
+				if item[2] == 0:
+					numL += 1
+			numR = len(self.diachars)-numL
+			if numL > 0:
+				Lspacing = storage.screensize[1]/numL
+			if numR > 0:
+				Rspacing = storage.screensize[1]/numR
+			for item in self.diachars:
+				if item[2] == 0:
+					x = 110
+					y = Lspacing * itrL + Lspacing/2
+					itrL += 1
+				else:
+					x = 570
+					y = Rspacing * itrR + Rspacing/2
+					itrR += 1
+				pygame.draw.rect(storage.uicanvas,(127,127,0),[x-5,y-5,50,50])
+				pygame.draw.rect(storage.uicanvas,(255,255,0),[x-5,y-5,50,50],5)
+				storage.uicanvas.blit(storage.spritesheet, [x,y],storage.animinfo["Portraits"][item[0]+item[1]])
+				
 			size = 0
 			for item in self.diamessages:
 				texttorender = item.split("\n")
@@ -844,7 +1027,7 @@ class cutsceneplayer(sharedlib.gameobject):
 		storage.ui.actlock = False
 
 class combatmanager(sharedlib.gameobject):
-	def __init__(self):
+	def __init__(self,mode):
 		super().__init__()
 		#NOTE: this requires the combat manager to be spawned AFTER all other gameobjects, so that it catches them.
 		#Maybe we should add a clause to character spawining to drop newcomers in here if we're in combat mode?
@@ -855,8 +1038,13 @@ class combatmanager(sharedlib.gameobject):
 		self.turn = 0
 		storage.ui.setcombattant(self.fighters[self.turn])
 		storage.ui.loadui("Combat")
-		storage.ui.loadcombatmenu("main")
+		self.state = mode
+		if self.state == 0:
+			storage.ui.loadcombatmenu("main")
+		elif self.state == 1:
+			storage.ui.loadcombatmenu("mainnorun")
 		storage.ui.actlock = True
+		self.aborted = False
 
 	def todata(self):
 		return ["combatmanager",[self.fighters,self.turn]]
@@ -869,6 +1057,7 @@ class combatmanager(sharedlib.gameobject):
 		storage.ui.loadui("Combat")
 		storage.ui.loadcombatmenu("main")
 		storage.ui.actlock = True
+		self.aborted = False
 
 	def findui(self):
 		for obj in storage.objlist:
@@ -887,6 +1076,7 @@ class combatmanager(sharedlib.gameobject):
 			index = 0
 			while index < len(self.fighters):
 				obj = self.fighters[index]
+				print(obj.state)
 				if obj.combatactive == False:
 					pos = obj.getcombatlocation()
 					if [obj.x,obj.y] != pos:
@@ -899,31 +1089,68 @@ class combatmanager(sharedlib.gameobject):
 				elif obj.state in [3,2]:
 					lose = False
 				index += 1
+
 			if win == True:
 				self.win()
 			elif lose == True:
-				self.gameover()
+				if self.aborted == False:
+					self.gameover()
+				else:
+					self.run()
 			else:
+				for item in combattant.timedfx:
+					if item[0] == "turnend":
+						item[1] -= 60
+						if item[1] <= 0:
+							combattant.timedfx.remove(item)
+							getattr(combattant,item[2])(*item[3])
 				self.turn += 1
 				if self.turn >= len(self.fighters):
 					self.turn = 0
+					self.fighters.sort(key = lambda x:x.getstat("priority"))
 				combattant = self.fighters[self.turn]
 				combattant.combatactive = True
 				storage.ui.setcombattant(combattant)
+				for item in combattant.timedfx:
+					if item[0] == "turnstart":
+						item[1] -= 60
+						if item[1] <= 0:
+							combattant.timedfx.remove(item)
+							getattr(combattant,item[2])(*item[3])
 				if combattant.state > 1:
 					storage.ui.loadui("Combat")
-					storage.ui.loadcombatmenu("main")
+					if self.state == 0:
+						storage.ui.loadcombatmenu("main")
+					elif self.state == 1:
+						storage.ui.loadcombatmenu("mainnorun")
 					storage.ui.actlock = True
 				else:
-					combattant.combatactions = [["wait",60]]
+					combattant.combatAI(combattant)
 
 	def gameover(self):
 		sharedlib.loadmenu("testmain")
+	
+	def run(self):
+		for man in self.fighters:
+			for item in man.timedfx:
+				if item[0] == "combatend":
+					man.timedfx.remove(item)
+					getattr(man,item[2])(*item[3])
+			man.writeglobalstats()
+		storage.ui.loadui("Blank")
+		print("#running")
+		softload(storage.runstate)
 
 	def win(self):
+		for man in self.fighters:
+			for item in man.timedfx:
+				if item[0] == "combatend":
+					man.timedfx.remove(item)
+					getattr(man,item[2])(*item[3])
+			man.writeglobalstats()
 		storage.ui.loadui("Blank")
 		print("#winning")
-		load(storage.savestate)
+		softload(storage.winstate)
 
 	def findchar(self,name):
 		for obj in storage.objlist:
@@ -940,16 +1167,33 @@ class party(sharedlib.gameobject):
 #save and load functions
 def save():
 	debug = storage.debug
-	partyspawn = storage.partyspawn
+	partyspawn = copy.deepcopy(storage.partyspawn)
+	camerabounds = copy.deepcopy(storage.cambounds)
+	missionprogress = copy.deepcopy(storage.missionprogress)
+	modstats = copy.deepcopy(storage.modstats)
+	statuseffects = copy.deepcopy(storage.timedfx)
 	items = []
 	for item in storage.objlist:
 		items.append(item.todata())
-	return [debug,partyspawn,items]
+	return [debug,partyspawn,items,camerabounds,missionprogress,modstats,statuseffects]
+
+#NOTE: softload is here for loading out of combats. It is the same as load, but it neglects certain things so that story progression and item uses will carry over.
+def softload(file):
+	storage.debug = file[0]
+	storage.partyspawn = file[1]
+	storage.objlist = []
+	storage.cambounds = copy.deepcopy(file[3])
+	for item in file[2]:
+		globals()[item[0]]().fromdata(item[1])
 
 def load(file):
 	storage.debug = file[0]
 	storage.partyspawn = file[1]
 	storage.objlist = []
+	storage.cambounds = copy.deepcopy(file[3])
+	storage.missionprogress = copy.deepcopy(file[4])
+	storage.modstats = copy.deepcopy(file[5])
+	storage.timedfx = copy.deepcopy(file[6])
 	for item in file[2]:
 		globals()[item[0]]().fromdata(item[1])
 

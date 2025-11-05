@@ -15,5 +15,5 @@
 "fighttest":[ ["mapdisplay",["Bigtest",0,0]],
 	      ["party",[0]],
 	      ["character",[300,400,0,50,50,50,1]],
-	      ["combatmanager",[]] ]
+	      ["combatmanager",[0]] ]
 }
