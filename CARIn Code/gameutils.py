@@ -1,8 +1,8 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 6.0
-Date: 11/4/2025
+Version: 7.0
+Date: 11/5/2025
 Purpose: Gameplay tools for Project CARIn
 """
 #setup
@@ -517,13 +517,13 @@ class character(object3d):
 	
 
 class collider(object3d):
-	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,ascend = 0):
+	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,descend = [0,0,0,0]):
 		super().__init__(x,y,z,w,h,d)
 		self.angle = angle/360*2*math.pi
-		self.ascend = ascend
+		self.descend = descend
 
 	def todata(self):
-		return ["collider",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.ascend]]
+		return ["collider",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend]]
 
 	def fromdata(self,data):
 		self.x = data[0]
@@ -535,7 +535,7 @@ class collider(object3d):
 		self.speed = copy.deepcopy(data[6])
 		self.grounded = data[7]
 		self.angle = data[8]
-		self.ascend = data[9]
+		self.descend = data[9]
 				
 	def collidepoint(self,basepoint):
 		#for both angle and perpendicular of angle:
@@ -544,15 +544,41 @@ class collider(object3d):
 			 (basepoint[0]-self.x)*math.sin(-self.angle)+(basepoint[1]-self.y)*math.cos(-self.angle),basepoint[2]]
 		if 0 <= point[0] <= self.w:
 			if 0 <= point[1] <= self.h:
-				if self.z >= point[2] >= self.z-self.d:
+				#NOTE: This is complicated maths stuff to do with triangle rasterizing and whatnot. I really wish there was an easier solution.
+				#NOTE 2: go to https://jtsorlinis.github.io/rendering-tutorial/ for more information
+				#get area
+				area = self.w*self.h
+				#Check in the TL-BR-BL tri
+				height = 0
+				if point[0]*self.h/self.w<=point[1]:
+					#TL-BR-P
+					BLWeight = ((self.w)*(point[1])-(self.h)*(point[0]))/area
+					#TL-P-BL
+					BRWeight = ((point[0])*(self.h))/area
+					#P-BR-BL
+					TLWeight = ((self.w-point[0])*(self.h-point[1])-(self.h-point[1])*(-point[0]))/area
+					TRWeight = 0
+				#if not there, check in the TL-TR-BR tri
+				else:
+					#TL-TR-P
+					BRWeight = ((self.w)*(point[1]))/area
+					#TL-P-BR
+					TRWeight = ((point[0])*(self.h)-(point[1])*(self.w))/area
+					#P-TR-BR
+					TLWeight = ((self.w-point[0])*(self.h-point[1])-(-point[1])*(self.w-point[0]))/area
+					BLWeight = 0
+				height = TLWeight*self.descend[0] + TRWeight*self.descend[1] + BRWeight*self.descend[2] + BLWeight*self.descend[3]
+				if self.z >= point[2] >= self.z-self.d+height:
 					minx = min([-point[0],self.w-point[0]],key=abs)
 					miny = min([-point[1],self.h-point[1]],key=abs)
 					if abs(miny) < abs(minx):
 						return [(0)*math.cos(self.angle)-(miny)*math.sin(self.angle),
-							(0)*math.sin(self.angle)+(miny)*math.cos(self.angle)]
+							(0)*math.sin(self.angle)+(miny)*math.cos(self.angle),
+							height]
 					else:
 						return [(minx)*math.cos(self.angle)-(0)*math.sin(self.angle),
-							(minx)*math.sin(self.angle)+(0)*math.cos(self.angle)]
+							(minx)*math.sin(self.angle)+(0)*math.cos(self.angle),
+							height]
 		return False
 	def collidecheck(self,hitter):
 		if self.collidepoint(hitter.center) != False:
@@ -567,14 +593,14 @@ class collider(object3d):
 	def interact(self,hitter):
 		pass
 	def render(self):
-		if self.angle == 0:
+		if False:#self.angle == 0:
 			if storage.debug:
 				pygame.draw.rect(storage.spritecanvas, (255,255,0), (int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h),2)
 				pygame.draw.rect(storage.spritecanvas, (255,255,0), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h+self.d),2)
 				pygame.draw.rect(storage.spritecanvas, (255,255,0), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h),2)
 		else:
 			if storage.debug:
-				pygame.draw.polygon(storage.spritecanvas, (255,255,0), ([int(self.x-storage.camfocus[0]),
+				pygame.draw.polygon(storage.spritecanvas, (255,0,0), ([int(self.x-storage.camfocus[0]),
 											int(self.y-storage.camfocus[1])],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
 											int(self.y-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
@@ -583,12 +609,12 @@ class collider(object3d):
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
 											int(self.y-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),2)
 				if self.angle <= 90:
-					pygame.draw.polygon(storage.spritecanvas, (255,255,0), ([int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))],
+					pygame.draw.polygon(storage.spritecanvas, (0,0,255), ([int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
+											int(self.y+self.z   +self.descend[0]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle)-self.h*math.sin(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
+											int(self.y+self.z   +self.descend[1]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
+											int(self.y+self.z   +self.descend[2]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
 											int(self.y+(self.z)-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle)-self.h*math.sin(self.angle))),
@@ -596,17 +622,17 @@ class collider(object3d):
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
 											int(self.y+(self.z)-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),2)
 				pygame.draw.polygon(storage.spritecanvas, (255,255,0), ([int(self.x-storage.camfocus[0]),
-											int(self.y+self.z-self.d-storage.camfocus[1])],
+											int(self.y+self.z   +self.descend[0]   -self.d-storage.camfocus[1])],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
+											int(self.y+self.z   +self.descend[1]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle)-self.h*math.sin(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
+											int(self.y+self.z   +self.descend[2]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),2)
+											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),2)
 
 class plat(collider):
 	def todata(self):
-		return ["plat",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.ascend]]
+		return ["plat",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend]]
 
 	def collidecheck(self, hitter):
 		if self.angle == 0:
@@ -636,12 +662,13 @@ class plat(collider):
 				hitter.y += result[1]
 		if self.collidepoint(hitter.top) != False:
 			hitter.z -= hitter.z-self.d+self.z
-		if self.collidepoint(hitter.bottom) != False:
-			hitter.z -= hitter.z - (self.z-self.d)
+		result = self.collidepoint(hitter.bottom)
+		if result != False:
+			hitter.z -= hitter.z - (self.z-self.d+result[2])
 			hitter.speed[2] = 0
 			hitter.grounded = True
 	def render(self):
-		if self.angle == 0:
+		if False:#self.angle == 0:
 			if storage.debug:
 				pygame.draw.rect(storage.spritecanvas, (0,100,0), (int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h),2)
 				pygame.draw.rect(storage.spritecanvas, (0,155,0), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h+self.d))
@@ -660,11 +687,11 @@ class plat(collider):
 											int(self.y-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),2)
 				if self.angle <= 90:
 					pygame.draw.polygon(storage.spritecanvas, (0,155,0), ([int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))],
+											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]),
-											int(self.y+self.z-self.d-storage.camfocus[1])],
+											int(self.y+self.z   +self.descend[0]   -self.d-storage.camfocus[1])],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
+											int(self.y+self.z   +self.descend[1]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
 											int(self.y+(self.z)-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle)-self.h*math.sin(self.angle))),
@@ -672,13 +699,13 @@ class plat(collider):
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
 											int(self.y+(self.z)-storage.camfocus[1]+(self.h*math.cos(self.angle)))]))
 				pygame.draw.polygon(storage.spritecanvas, (0,255,0), ([int(self.x-storage.camfocus[0]),
-											int(self.y+self.z-self.d-storage.camfocus[1])],
+											int(self.y+self.z   +self.descend[0]   -self.d-storage.camfocus[1])],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
+											int(self.y+self.z   +self.descend[1]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle)-self.h*math.sin(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
+											int(self.y+self.z   +self.descend[2]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]))
+											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]))
 			else:
 				pygame.draw.rect(storage.spritecanvas, (255,0,255), ([int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
 											int(self.y+self.z-self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))],
