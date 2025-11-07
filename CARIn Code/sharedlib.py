@@ -25,3 +25,7 @@ class gameobject:
 		storage.objlist.remove(self)
 	def novertcollide(self,hitter):
 		pass
+	def tostring(self):
+		return f
+	def fromstring(self):
+		pass
