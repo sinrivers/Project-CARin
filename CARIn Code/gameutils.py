@@ -1200,8 +1200,15 @@ def save():
 	modstats = copy.deepcopy(storage.modstats)
 	statuseffects = copy.deepcopy(storage.timedfx)
 	items = []
-	for item in storage.objlist:
-		items.append(item.todata())
+	data = None
+# Skip known UI/non-persistent things
+	if getattr(items, "persist", True) is False or getattr(items, "is_ui", False):
+		data = None
+	elif hasattr(items, "todata"):
+		data = items.todata()
+
+	if data is not None:
+		items.append(data)
 	return [debug,partyspawn,items,camerabounds,missionprogress,modstats,statuseffects]
 
 #NOTE: softload is here for loading out of combats. It is the same as load, but it neglects certain things so that story progression and item uses will carry over.
