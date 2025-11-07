@@ -9,6 +9,7 @@ Purpose: master file for Project CARIn
 #imports
 import pygame
 import json
+import vn_system
 
 import storage
 
@@ -50,6 +51,12 @@ storage.cutscenes = {
 	"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["char",["CARIn","jump"]]],
 	"test2":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","CARIn",0]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]
 }
+storage.cutscenes["intro_vn"] = [
+	{"speaker": "CARIn", "text": "Welcome to Project CARIn."},
+	{"speaker": "CARIn", "text": "Your journey begins here."},
+	{"speaker": "???", "text": "Let’s see how this story unfolds..."}
+]
+
 storage.uipresets = {}
 storage.combatactions = {
 	"Nothing":[["wait",60]],
@@ -123,7 +130,7 @@ while True:
 	storage.rendered = []
 	for obj in storage.objlist:
 		obj.update()
-	storage.objlist.sort(key=lambda x: x.vertsort)
+	storage.objlist.sort(key=lambda x: x.vertsort if isinstance(x.vertsort, (int, float)) else 0)
 
 	for item in storage.objlist:
 		if storage.rendered == []:

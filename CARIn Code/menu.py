@@ -59,6 +59,7 @@ class menubutton(sharedlib.gameobject):
 		elif self.funcname == "loadgame":
 			sharedlib.menu_active = False
 			sharedlib.loadgame(self.arg)
+			sharedlib.start_cutscene("intro_vn")
 		elif self.funcname == "quit":            # <-- add this
 			import sys
 			pygame.quit()
