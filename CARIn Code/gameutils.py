@@ -1,8 +1,8 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 7.0
-Date: 11/5/2025
+Version: 8.0
+Date: 11/10/2025
 Purpose: Gameplay tools for Project CARIn
 """
 #setup
@@ -97,8 +97,13 @@ class character(object3d):
 		if self.state == 3:
 			storage.camera.target = self
 		self.speed = [0,0,0]
+		self.angle = 0
+
 		self.framecounter = 0
 		self.framenumber = 0
+		self.animname = "stand0"
+		self.animpriority = False
+
 		self.grounded = True
 		self.walkspeed = 2 * self.getstat("priority")
 		self.jumpspeed = 40 * self.getstat("priority")
@@ -109,7 +114,7 @@ class character(object3d):
 		self.traction = 1
 		self.gravity = 1
 		self.interactd = 50
-		self.interactpoint = [self.x+self.w+self.interactd,self.y+self.w/2,self.z-self.d/2]
+		self.interactpoint = [self.x+self.w+self.interactd,self.y+self.h/2,self.z-self.d/2]
 		self.combatactions = []
 		self.combatactive = False
 		self.combatactionsindex = 0
@@ -118,7 +123,7 @@ class character(object3d):
 
 	def todata(self):
 		self.writeglobalstats()
-		return ["character",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.framecounter,self.framenumber,self.name,self.combatactive,self.state,self.iframes]]
+		return ["character",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.framecounter,self.framenumber,self.name,self.combatactive,self.state,self.iframes,self.angle]]
 
 	def fromdata(self,data):
 		#NOTE: add updateable stats later
@@ -129,6 +134,7 @@ class character(object3d):
 		self.h = data[4]
 		self.d = data[5]
 		self.speed = copy.deepcopy(data[6])
+		self.angle = data[14]
 		self.grounded = data[7]
 		self.framecounter = data[8]
 		self.framenumber = data[9]
@@ -136,6 +142,8 @@ class character(object3d):
 		self.combatactive = data[11]
 		self.state = data[12]
 		self.iframes = data[13]
+		self.animname = "stand0"
+		self.animpriority = False
 		self.pullglobalstats()
 		self.walkspeed = 2 * self.getstat("priority")
 		self.jumpspeed = 40 * self.getstat("priority")
@@ -176,6 +184,7 @@ class character(object3d):
 					self.followupdates()
 				case 3:
 					self.controlupdates()
+			self.animpicker()
 		else:
 			if self.combatactive == True:
 				if self.combatactions != []:
@@ -286,14 +295,37 @@ class character(object3d):
 			self.combatactionsindex += 1
 			
 
+	def setanim(self,name,request=False):
+		if self.animpriority == False or request == True:
+			if self.animname != name:
+				self.animname = name
+				self.animpriority = request
+				self.framenumber = 0
+				self.framecounter = 0
+		else:
+			self.queuedanim = name
+
+	def animpicker(self):
+		#pick an animation
+		if self.speed[0] > 0 or self.speed[1] > 0:
+			self.setanim("walk"+str(self.angle))
+		else:
+			self.setanim("stand"+str(self.angle))
+		if self.speed[2] < 0:
+			self.setanim("airup"+str(self.angle))
+		elif self.speed[2] > 0:
+			self.setanim("airdown"+str(self.angle))
+			
 	def animupdate(self):
-		self.animname = "walk"
 		self.framecounter += 1
 		if storage.animinfo[self.name]["anims"][self.animname][self.framenumber][1] < self.framecounter:
 			self.framecounter = 0
 			self.framenumber += 1
 			if self.framenumber >= len(storage.animinfo[self.name]["anims"][self.animname]):
 				self.framenumber = 0
+				if self.animpriority:
+					if hasattr(self,"queuedanim"):
+						self.animname = self.queuedanim
 
 	def render(self):
 		if self.name == None:
@@ -310,13 +342,18 @@ class character(object3d):
 				pygame.draw.rect(storage.spritecanvas, (0,155,155), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h+self.d))
 				pygame.draw.rect(storage.spritecanvas, (0,255,255), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h))
 		else:
+
 			self.animupdate()
 			pygame.draw.rect(storage.spritecanvas, (0,0,100), (int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h),2)
 			
 			holder=storage.animinfo[self.name]["frames"][storage.animinfo[self.name]["anims"][self.animname][self.framenumber][0]]
-			storage.spritecanvas.blit(storage.spritesheet, [int(self.x+self.w/2-holder[2]/2-storage.camfocus[0]),
-								int(self.y+self.h/2-holder[3]+self.z+self.d/2-storage.camfocus[1])],holder)
-
+			if len(storage.animinfo[self.name]["anims"][self.animname][self.framenumber]) <= 2:
+				storage.spritecanvas.blit(storage.spritesheet, [int(self.x+self.w/2-holder[2]/2-storage.camfocus[0]),
+										int(self.y+self.h/2-holder[3]+self.z+self.d/2-storage.camfocus[1])],holder)
+			else:
+				holdermod = storage.spritesheet.get_width()-holder[0]-holder[2]
+				storage.spritecanvas.blit(pygame.transform.flip(storage.spritesheet,1,0), [int(self.x+self.w/2-holder[2]/2-storage.camfocus[0]),
+										int(self.y+self.h/2-holder[3]+self.z+self.d/2-storage.camfocus[1])],[holdermod,holder[1],holder[2],holder[3]])
 	def checkcollide(self):
 		self.grounded = False
 		for obj in storage.objlist:
@@ -345,13 +382,28 @@ class character(object3d):
 
 	def physics(self):
 		if self.speed[0] > 0:
-			self.speed[0] -= self.traction
+			if self.speed[0] < self.traction:
+				self.speed[0] = 0
+			else:
+				self.speed[0] -= self.traction
+
 		elif self.speed[0] < 0:
-			self.speed[0] += self.traction
+			if self.speed[0] > -self.traction:
+				self.speed[0] = 0
+			else:
+				self.speed[0] += self.traction
+
 		if self.speed[1] > 0:
-			self.speed[1] -= self.traction
+			if self.speed[1] < self.traction:
+				self.speed[1] = 0
+			else:
+				self.speed[1] -= self.traction
+
 		elif self.speed[1] < 0:
-			self.speed[1] += self.traction
+			if self.speed[1] > -self.traction:
+				self.speed[1] = 0
+			else:
+				self.speed[1] += self.traction
 		if self.grounded == False:
 			self.speed[2] += self.gravity
 
@@ -390,21 +442,46 @@ class character(object3d):
 					
 	def controlupdates(self):
 		#get control updates
-		#print(self.interactpoint)
-		if storage.keys[pygame.K_a]:
-			self.speed[0] = -self.walkspeed
-			self.interactpoint = [self.x-self.interactd,self.y+self.w/2,self.z-self.d/2]
-		elif storage.keys[pygame.K_d]:
-			self.speed[0] = self.walkspeed
-			self.interactpoint = [self.x+self.w+self.interactd,self.y+self.w/2,self.z-self.d/2]
-		if storage.keys[pygame.K_w]:
-			self.speed[1] = -self.walkspeed
-			self.interactpoint = [self.x+self.w/2,self.y-self.interactd,self.z-self.d/2]
-		elif storage.keys[pygame.K_s]:
-			self.speed[1] = self.walkspeed
-			self.interactpoint = [self.x+self.w/2,self.y+self.w/2+self.interactd,self.z-self.d/2]
+		#NOTE: This method for determining angles is inherently flawed, and as a result you will almost never see the non-cardinal idle sprites. Maybe fix later?
+		angleamt = [0,0]
+		walk = False
+		if storage.keys[pygame.K_a] or storage.dpad[0]:
+			angleamt[0] = -1
+			walk = True
+		elif storage.keys[pygame.K_d] or storage.dpad[1]:
+			angleamt[0] = 1
+			walk = True
+		if storage.keys[pygame.K_w] or storage.dpad[2]:
+			angleamt[1] = -1
+			walk = True
+		elif storage.keys[pygame.K_s] or storage.dpad[3]:
+			angleamt[1] = 1
+			walk = True
+
+		if angleamt[0] == 0:
+			if angleamt[1] == 0:
+				pass
+			elif angleamt[1] > 0:
+				self.angle = 270
+			else:
+				self.angle = 90
+		elif angleamt[0] > 0:
+			if angleamt[1] == 0:
+				self.angle = 0
+			elif angleamt[1] > 0:
+				self.angle = 315
+			else:
+				self.angle = 45
+		else:
+			if angleamt[1] == 0:
+				self.angle = 180
+			elif angleamt[1] > 0:
+				self.angle = 225
+			else:
+				self.angle = 135
 		if pygame.K_SPACE in storage.newkeys and self.grounded:
 			self.jump()
+		
 		if pygame.K_RETURN in storage.newkeys:
 			for obj in storage.objlist:
 				if isinstance(obj, object3d):
@@ -412,7 +489,15 @@ class character(object3d):
 						obj.interact(self)
 		if pygame.K_9 in storage.newkeys:
 			load(storage.savestate)
-
+		if pygame.K_LSHIFT in storage.newkeys:
+			cutsceneplayer("Pause")
+		if walk:
+			self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
+			self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+	
+			self.interactpoint = [self.center[0]+(self.interactd)*math.cos(self.angle/180*math.pi),
+				      self.center[1]-(self.interactd)*math.sin(self.angle/180*math.pi),
+				      self.z-self.d/2]
 	def runmaster(self):
 		target = findcombatman()
 		target.aborted = True
@@ -436,10 +521,57 @@ class character(object3d):
 		self.combatactionsindex += 1
 	
 
-	#THIS IS A PLACEHOLDER, FIX LATER
 	def goto(self):
-		self.combatactionsindex += 1
-	
+		pos = self.combatactions[self.combatactionsindex][1]
+		if [self.x,self.y] == pos:
+			self.combatactionsindex += 1
+		else:
+			if (self.x-pos[0])**2 + (self.x-pos[0])**2 <= self.walkspeed:
+				self.x = pos[0]
+				self.y = pos[1]
+				self.combatactionsindex += 1
+			else:
+				if self.x-pos[0] != 0:
+					if self.y-pos[1] != 0:
+						self.angle = math.atan((self.y-pos[1]) / (self.x-pos[0]))
+					elif self.x > pos[0]:
+						self.angle = 180
+					else:
+						self.angle = 0
+				elif self.y < pos[1]:
+					self.angle = 90
+				else:
+					self.angle = 270
+				self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
+				self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+
+	def gototarget(self):
+		if self.combattarget[0].state < 2:
+			pos = [self.combattarget[0].x-20-self.w,self.combattarget[0].y]
+		else:
+			pos = [self.combattarget[0].x+20,self.combattarget[0].y]
+		if [self.x,self.y] == pos:
+			self.combatactionsindex += 1
+		else:
+			if (self.x-pos[0])**2 + (self.x-pos[0])**2 <= self.walkspeed:
+				self.x = pos[0]
+				self.y = pos[1]
+				self.combatactionsindex += 1
+			else:
+				if self.x-pos[0] != 0:
+					if self.y-pos[1] != 0:
+						self.angle = math.atan((self.y-pos[1]) / (self.x-pos[0]))
+					elif self.x > pos[0]:
+						self.angle = 180
+					else:
+						self.angle = 0
+				elif self.y < pos[1]:
+					self.angle = 90
+				else:
+					self.angle = 270
+				self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
+				self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+
 	def wait(self):
 		self.combatactions[self.combatactionsindex][1] -= 1
 		if self.combatactions[self.combatactionsindex][1] == 0:
@@ -517,13 +649,15 @@ class character(object3d):
 	
 
 class collider(object3d):
-	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,descend = [0,0,0,0]):
+	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,descend = [0,0,0,0],image = None,offset = [0,0]):
 		super().__init__(x,y,z,w,h,d)
 		self.angle = angle/360*2*math.pi
 		self.descend = descend
+		self.image = image
+		self.offset = offset
 
 	def todata(self):
-		return ["collider",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend]]
+		return ["collider",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend,self.image,self.offset]]
 
 	def fromdata(self,data):
 		self.x = data[0]
@@ -536,10 +670,14 @@ class collider(object3d):
 		self.grounded = data[7]
 		self.angle = data[8]
 		self.descend = data[9]
+		self.image = data[10]
+		self.offset = data[11]
 				
 	def collidepoint(self,basepoint):
 		#for both angle and perpendicular of angle:
 		#print([basepoint[0]-self.x,basepoint[1]-self.y,basepoint[2]], [(basepoint[0]-self.x)*math.cos(0)-(basepoint[1]-self.y)*math.sin(0),(basepoint[0]-self.x)*math.sin(0)+(basepoint[1]-self.y)*math.cos(0),basepoint[2]])
+		if len(basepoint) < 3:
+			basepoint.append(0)
 		point = [(basepoint[0]-self.x)*math.cos(-self.angle)-(basepoint[1]-self.y)*math.sin(-self.angle),
 			 (basepoint[0]-self.x)*math.sin(-self.angle)+(basepoint[1]-self.y)*math.cos(-self.angle),basepoint[2]]
 		if 0 <= point[0] <= self.w:
@@ -632,7 +770,7 @@ class collider(object3d):
 
 class plat(collider):
 	def todata(self):
-		return ["plat",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend]]
+		return ["plat",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend,self.image,self.offset]]
 
 	def collidecheck(self, hitter):
 		if self.angle == 0:
@@ -706,19 +844,23 @@ class plat(collider):
 											int(self.y+self.z   +self.descend[2]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
 											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]))
-			else:
-				pygame.draw.rect(storage.spritecanvas, (255,0,255), ([int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))],
+			elif self.image == None:
+				pygame.draw.polygon(storage.spritecanvas, (255,0,255), ([int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
+											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]),
-											int(self.y+self.z-self.d-storage.camfocus[1])],
+											int(self.y+self.z   +self.descend[0]   -self.d-storage.camfocus[1])],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
-											int(self.y+self.z-self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
+											int(self.y+self.z   +self.descend[1]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
 											int(self.y+(self.z)-storage.camfocus[1]+(self.w*math.sin(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle)-self.h*math.sin(self.angle))),
 											int(self.y+(self.z)-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
 											int(self.y+(self.z)-storage.camfocus[1]+(self.h*math.cos(self.angle)))]))
+			else:
+				holder = storage.animinfo["TerrainObjs"][self.image]
+				storage.spritecanvas.blit(storage.spritesheet,[self.offset[0]+self.x+self.w/2,self.offset[1]+self.y+self.h/2-self.z-self.d/2],holder[:5])
+
 
 
 class mapdisplay(sharedlib.gameobject):
@@ -743,10 +885,13 @@ class mapdisplay(sharedlib.gameobject):
 
 	def update(self):
 		super().update()
+		if self not in storage.objlist:
+			print("Why is this still happening?")
 		if self.x < storage.cambounds[0]:
 			storage.cambounds[0] = self.x
 		if self.x+self.w > storage.cambounds[2]:
 			storage.cambounds[2] = self.x+self.w
+			print(self.path)
 		if self.y < storage.cambounds[1]:
 			storage.cambounds[1] = self.y
 		if self.y+self.h > storage.cambounds[3]:
@@ -825,6 +970,8 @@ class uiobject(sharedlib.gameobject):
 		self.choices = []
 		self.outcomes = []
 		self.active = 0
+		self.dictmode = 0
+		self.dictoffset = 0
 		self.submenu = "main"
 		self.combattant = None
 		self.actlock = False
@@ -845,6 +992,64 @@ class uiobject(sharedlib.gameobject):
 		self.active = data[5]
 
 	def update(self):
+		if self.mode == "Dictionary":
+			if pygame.K_a in storage.newkeys or pygame.K_d in storage.newkeys:
+				if self.dictmode == 0:
+					self.dictmode = 1
+					size = len(storage.storydict.keys())
+				else:
+					self.dictmode = 0
+					size = len(storage.cyberdict.keys())
+				if self.active >= size:
+					self.active = 0
+				elif self.active < 0:
+					self.active = size - 1
+
+			if pygame.K_s in storage.newkeys:
+				self.active += 1
+			if pygame.K_w in storage.newkeys:
+				self.active -= 1
+			
+			if self.dictmode == 0:
+				size = len(storage.storydict.keys())
+			else:
+				size = len(storage.cyberdict.keys())
+			if self.active >= size:
+				self.active = 0
+			elif self.active < 0:
+				self.active = size - 1
+
+			if self.dictmode == 0:
+				total = 0
+				itr = 0
+				for item in storage.storydict.keys():
+					size = 20#storage.writer.size(item)[1]
+					if itr == self.active:
+						if total + size + self.dictoffset > 380:
+							self.dictoffset = 380-(total + size)
+						elif total + self.dictoffset < 0:
+							self.dictoffset = -total
+					total += size
+					itr += 1
+			else:
+				total = 0
+				itr = 0
+				for item in storage.cyberdict.keys():
+					size = 20#storage.writer.size(item)[1]
+					if itr == self.active:
+						if total + size + self.dictoffset > 380:
+							self.dictoffset = 380-(total + size)
+						elif total + self.dictoffset < 0:
+							self.dictoffset = -total
+					total += size
+					itr += 1
+						
+		elif self.mode == "Win" and pygame.K_RETURN in storage.newkeys:
+			self.loadui("Blank")
+			print("#winning")
+			softload(storage.winstate)			
+			
+			
 		if self.choices != []:
 			if pygame.K_s in storage.newkeys:
 				self.active += 1
@@ -902,20 +1107,61 @@ class uiobject(sharedlib.gameobject):
 		if name != "Dialogue" and self.mode == "Dialogue":
 			self.diamessages.append("<END OF LINE>")
 			self.diachars = []
-		if name == "Dialogue" and self.mode != "Dialogue":
+		elif name == "Dialogue" and self.mode != "Dialogue":
 			self.diamessages.append("<CONVERSATION STARTED>")
+		elif name == "Dictionary":
+			self.actlock = True
 		self.mode = name
 
 	def render(self):
 		if self.mode == "Blank":
 			storage.uicanvas.blit(storage.writer.render("This area left intentionally blank",False,(255,255,255)),(0,0))#(self.x,self.y))
+		if self.mode == "Win":
+			storage.uicanvas.blit(storage.writer.render("THIS SCREEN CONTAINS WIN",False,(255,255,255)),(0,0))#(self.x,self.y))
+		elif self.mode == "Dictionary":
+			if self.dictmode == 0:
+				storage.uicanvas.blit(storage.writer.render("Story Dictionary",False,(255,255,0)),(50,20))
+				pygame.draw.rect(storage.uicanvas,(127,127,0),[40,40,200,400])
+				pygame.draw.rect(storage.uicanvas,(127,127,0),[240,40,440,400])
+				pygame.draw.rect(storage.uicanvas,(255,255,0),[40,40,200,400],5)
+				pygame.draw.rect(storage.uicanvas,(255,255,0),[240,40,440,400],5)
+				itr = 0
+				for item in storage.storydict.keys():
+					if itr == self.active:
+						storage.uicanvas.blit(storage.writer.render(item,False,(255,255,255)),(50,50+itr*20+self.dictoffset))
+						text = formattextforwidth(storage.storydict[item],420)
+						linecounter = 0
+						for line in text:
+							storage.uicanvas.blit(storage.writer.render(line,False,(255,255,255)),(250,50+linecounter*10))
+							linecounter += 1
+					else:
+						storage.uicanvas.blit(storage.writer.render(item,False,(255,255,0)),(50,50+itr*20+self.dictoffset))
+					itr += 1
+			else:
+				storage.uicanvas.blit(storage.writer.render("Cybersecurity Dictionary",False,(255,255,255)),(50,20))
+				pygame.draw.rect(storage.uicanvas,(127,127,127),[40,40,200,400])
+				pygame.draw.rect(storage.uicanvas,(127,127,127),[240,40,440,400])
+				pygame.draw.rect(storage.uicanvas,(255,255,255),[40,40,200,400],5)
+				pygame.draw.rect(storage.uicanvas,(255,255,255),[240,40,440,400],5)
+				itr = 0
+				for item in storage.cyberdict.keys():
+					if itr == self.active:
+						storage.uicanvas.blit(storage.writer.render(item,False,(255,255,255)),(50,50+itr*20+self.dictoffset))
+						text = formattextforwidth(storage.cyberdict[item],420)
+						linecounter = 0
+						for line in text:
+							storage.uicanvas.blit(storage.writer.render(line,False,(255,255,255)),(250,50+linecounter*10))
+							linecounter += 1
+					else:
+						storage.uicanvas.blit(storage.writer.render(item,False,(0,0,0)),(50,50+itr*20+self.dictoffset))
+					itr += 1
 
-		if self.mode == "Combat":
+		elif self.mode == "Combat":
 			size = 0
 			if self.combattant.combatactions == []:
 				pygame.draw.rect(storage.uicanvas,(127,127,0),[160,40,400,400])
 				pygame.draw.rect(storage.uicanvas,(255,255,0),[160,40,400,400],5)
-				storage.uicanvas.blit(storage.writer.render(f"it is {self.combattant.name}'s turn.",False,(255,255,255)),[165,45])
+				storage.uicanvas.blit(storage.writer.render(f"{self.combattant.name}:{self.combattant.getstat("maxhp")-self.combattant.getstat("damage")}/{self.combattant.getstat("maxhp")}HP {self.combattant.getstat("maxdata")-self.combattant.getstat("spentdata")}/{self.combattant.getstat("maxdata")}DATA ",False,(255,255,255)),[165,45])
 				size += storage.writer.size(f"it is {self.combattant.name}'s turn.")[1]
 				for index in range(len(self.choices)):
 					size += 5
@@ -925,7 +1171,7 @@ class uiobject(sharedlib.gameobject):
 						storage.uicanvas.blit(storage.writer.render(self.choices[index],False,(255,255,0)),[165,45+size])
 					size += storage.writer.size(self.choices[index])[1]
 
-		if self.mode == "Dialogue":
+		elif self.mode == "Dialogue":
 			pygame.draw.rect(storage.uicanvas,(127,127,0),[160,40,400,400])
 			pygame.draw.rect(storage.uicanvas,(255,255,0),[160,40,400,400],5)
 			itrL = 0
@@ -976,6 +1222,18 @@ class uiobject(sharedlib.gameobject):
 				size -= storage.writer.size(self.choices[index])[1]
 				
 			
+def formattextforwidth(text,width):
+	words = text.split(" ")
+	out = []
+	buffer = ""
+	for word in words:
+		if storage.writer.size(buffer+word)[0] > width:
+			out.append(buffer)
+			buffer = word + " "
+		else:
+			buffer += word + " "
+	out.append(buffer)
+	return out
 
 #as the name suggests, this manages cutscenes. It finds objects in the loaded game cell and gives them instructions, after locking down their free will for a bit.
 #however, this is also to be used for all dialog loading purposes and, if we ever make one, loading the pause menu.
@@ -1030,6 +1288,9 @@ class cutsceneplayer(sharedlib.gameobject):
 				if action[1] == "enter":
 					if pygame.K_RETURN in storage.newkeys:
 						self.itr += 1
+				elif action[1] == "lshift":
+					if pygame.K_LSHIFT in storage.newkeys:
+						self.itr += 1
 				else:
 					action[1] -= 1
 					if action[1] == 0:
@@ -1050,8 +1311,9 @@ class cutsceneplayer(sharedlib.gameobject):
 		return False
 
 	def delete(self):
-		storage.objlist.remove(self)
-		storage.ui.actlock = False
+		if self in storage.objlist:
+			storage.objlist.remove(self)
+			storage.ui.actlock = False
 
 class combatmanager(sharedlib.gameobject):
 	def __init__(self,mode):
@@ -1096,6 +1358,7 @@ class combatmanager(sharedlib.gameobject):
 		pass
 
 	def update(self):
+		#print(self.turn)
 		combattant = self.fighters[self.turn]
 		if combattant.combatactive == False:
 			win = True
@@ -1103,7 +1366,6 @@ class combatmanager(sharedlib.gameobject):
 			index = 0
 			while index < len(self.fighters):
 				obj = self.fighters[index]
-				print(obj.state)
 				if obj.combatactive == False:
 					pos = obj.getcombatlocation()
 					if [obj.x,obj.y] != pos:
@@ -1153,6 +1415,8 @@ class combatmanager(sharedlib.gameobject):
 					storage.ui.actlock = True
 				else:
 					combattant.combatAI(combattant)
+			if self.turn >= len(self.fighters):
+				self.turn = 0
 
 	def gameover(self):
 		sharedlib.loadmenu("testmain")
@@ -1175,9 +1439,8 @@ class combatmanager(sharedlib.gameobject):
 					man.timedfx.remove(item)
 					getattr(man,item[2])(*item[3])
 			man.writeglobalstats()
-		storage.ui.loadui("Blank")
-		print("#winning")
-		softload(storage.winstate)
+		self.delete()
+		cutsceneplayer("Win")
 
 	def findchar(self,name):
 		for obj in storage.objlist:
@@ -1206,6 +1469,7 @@ def save():
 
 #NOTE: softload is here for loading out of combats. It is the same as load, but it neglects certain things so that story progression and item uses will carry over.
 def softload(file):
+	storage.orderreset = True
 	storage.debug = file[0]
 	storage.partyspawn = file[1]
 	storage.objlist = []
@@ -1214,6 +1478,7 @@ def softload(file):
 		globals()[item[0]]().fromdata(item[1])
 
 def load(file):
+	storage.orderreset = True
 	storage.debug = file[0]
 	storage.partyspawn = file[1]
 	storage.objlist = []

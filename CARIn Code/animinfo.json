@@ -1,16 +1,55 @@
 {
 "CARIn":{
 	"anims":{
-		"stand":[["stand",60]],
-		"walk":[["walkL",60],["stand",20],["walkR",60],["stand",20]]
+		"stand0":[["stand0",60]],
+		"stand45":[["stand45",60]],
+		"stand90":[["stand90",60]],
+		"stand135":[["stand45",60,1]],
+		"stand180":[["stand0",60,1]],
+		"stand225":[["stand315",60,1]],
+		"stand270":[["stand270",60]],
+		"stand315":[["stand315",60]],
+		"walk0":[["fall315",60]],
+		"walk45":[["fall315",60]],
+		"walk90":[["fall315",60]],
+		"walk135":[["fall315",60]],
+		"walk180":[["fall315",60]],
+		"walk225":[["fall315",60]],
+		"walk270":[["fall315",60]],
+		"walk315":[["walkL315",60],["stand315",20],["walkR315",60],["stand315",20]],
+		"airup0":[["fall315",60]],
+		"airup45":[["fall315",60]],
+		"airup90":[["fall315",60]],
+		"airup135":[["fall315",60]],
+		"airup180":[["fall315",60]],
+		"airup225":[["fall315",60]],
+		"airup270":[["fall315",60]],
+		"airup315":[["jump315",60]],
+		"airdown0":[["fall315",60]],
+		"airdown45":[["fall315",60]],
+		"airdown90":[["fall315",60]],
+		"airdown135":[["fall315",60]],
+		"airdown180":[["fall315",60]],
+		"airdown225":[["fall315",60]],
+		"airdown270":[["fall315",60]],
+		"airdown315":[["fall315",60]]
 		},
 	"frames":{
-		"stand":[65,0,55,95],
-		"walkL":[3,0,55,95],
-		"walkR":[121,0,55,95]
+		"stand0":[110,0,55,110],
+		"stand45":[165,0,55,110],
+		"stand90":[210,0,55,110],
+		"stand270":[55,0,55,110],
+		"stand315":[0,0,55,110],
+		"walkL315":[0,110,55,110],
+		"walkR315":[0,220,55,110],
+		"jump315":[0,330,55,110],
+		"fall315":[0,440,55,110]
 		}
 	},
 "Portraits":{
 	"CARInNeutral":[70,5,40,40]
+	},
+"TerrainObjs":{
+	"testblock":[0,440,55,110]
 	}
 }
