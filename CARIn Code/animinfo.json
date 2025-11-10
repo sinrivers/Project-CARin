@@ -16,7 +16,7 @@
 		"walk180":[["fall315",60]],
 		"walk225":[["fall315",60]],
 		"walk270":[["fall315",60]],
-		"walk315":[["walkL315",60],["stand315",20],["walkR315",60],["stand315",20]],
+		"walk315":[["walkL315",5],["stand315",1],["walkR315",5],["stand315",1]],
 		"airup0":[["fall315",60]],
 		"airup45":[["fall315",60]],
 		"airup90":[["fall315",60]],

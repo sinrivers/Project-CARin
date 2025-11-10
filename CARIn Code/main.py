@@ -1,7 +1,7 @@
 """
 Filename: main.py
 Author(s): Taliesin Reese
-Version: 7.0
+Version: 7.1
 Date: 11/10/2025
 Purpose: master file for Project CARIn
 """
@@ -43,6 +43,8 @@ storage.clicks = []
 storage.newclicks = []
 storage.keys = []
 storage.newkeys = []
+storage.timeadjust = False
+storage.deltatime = 1
 
 #create worldstate
 storage.objlist = []
@@ -70,8 +72,8 @@ storage.uipresets = {}
 storage.combatactions = {
 			"Nothing":[["wait",60]],
 			"Win":[["wait",60],["wipe",0],["wait",60]],
-			"staffattack":[["wait",1],["picktargethostile"],["gototarget"],["staffattack"],["wait",600]],
-			"PsychUp":[["checkavailabledata",10],["alterstat","spentdata",10],["alterstat","write",10],["addtimedfx","turnend",120,"alterstat",["write",-10]],["wait",600]],
+			"staffattack":[["wait",1],["picktargethostile"],["gototarget"],["staffattack"],["wait",60]],
+			"PsychUp":[["checkavailabledata",10],["alterstat","spentdata",10],["alterstat","write",10],["addtimedfx","turnend",120,"alterstat",["write",-10]],["wait",60]],
 			"Runmaster":[["runmaster"]]
 			}
 storage.charmenus = {
@@ -105,7 +107,7 @@ storage.storydict = {
 			"CARIn":"Computer Access Regulation INterface. A Security Program who was written on accident. Her job is to keep the system safe and running smoothly.",
 			"DiRK":"DIgital Registry Keyring. A Password Management and encryption program. His job is to find passwords on the system and put them in secure places.",
 			"PLoT":"Program LOcation Tool.",
-			"MArIn":"Music ARrangement Integration."
+			"MArIn":"Music ARrangement INtegration."
 			}
 storage.cyberdict = {
 			"User": "You!",
@@ -117,7 +119,7 @@ storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").conv
 storage.spritesheet.set_colorkey((255,0,255))
 genesis = menu.menubutton(0,0,0,0,"printwbutton","")
 #genesis.loadmenu("testmain")
-genesis.loadgame("angletest")
+genesis.loadgame("test2")
 storage.savestate = gameutils.save()
 storage.runstate = gameutils.save()
 storage.winstate = gameutils.save()
@@ -126,8 +128,11 @@ storage.winstate = gameutils.save()
 #while true
 while True:
 	#print(storage.cambounds)
-	#TODO: calculate deltatime?
-	storage.deltatime = 60*storage.clock.get_time()/1000
+	#NOTE: these Deltatime calculations inherently introduce bugs at super-low framerates.
+	#I feel like I fixed these in my last game, but can't recall or rediscover how. 
+	#We should have an option to turn on/off timescaling.
+	if storage.timeadjust:
+		storage.deltatime = 60*storage.clock.get_time()/1000
 	#get input updates from the PIU
 	storage.mousepos = pygame.mouse.get_pos()
 	#TODO: We probably want to make the game resolution-agnostic by having all coordinates be in "units" rather than pixels. This is a spot that will require change.
@@ -209,5 +214,5 @@ while True:
 	storage.window.fill((0,0,0))
 	storage.spritecanvas.fill((255,0,255))
 	storage.uicanvas.fill((255,0,255))
-	storage.clock.tick()
+	storage.clock.tick(60)
 	

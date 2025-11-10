@@ -1,7 +1,7 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 8.0
+Version: 8.1
 Date: 11/10/2025
 Purpose: Gameplay tools for Project CARIn
 """
@@ -105,13 +105,13 @@ class character(object3d):
 		self.animpriority = False
 
 		self.grounded = True
-		self.walkspeed = 2 * self.getstat("priority")
-		self.jumpspeed = 40 * self.getstat("priority")
+		self.walkspeed = self.getstat("priority")
+		self.jumpspeed = 5 * self.getstat("priority")
 		if self.name == None or not hasattr(ais,self.name):
 			self.combatAI = getattr(ais, "Missingno")
 		else:
 			self.combatAI = getattr(ais, self.name)
-		self.traction = 1
+		self.traction = .5
 		self.gravity = 1
 		self.interactd = 50
 		self.interactpoint = [self.x+self.w+self.interactd,self.y+self.h/2,self.z-self.d/2]
@@ -145,8 +145,8 @@ class character(object3d):
 		self.animname = "stand0"
 		self.animpriority = False
 		self.pullglobalstats()
-		self.walkspeed = 2 * self.getstat("priority")
-		self.jumpspeed = 40 * self.getstat("priority")
+		self.walkspeed = self.getstat("priority")
+		self.jumpspeed = 5 * self.getstat("priority")
 		if self.name == None or not hasattr(ais,self.name):
 			self.combatAI = getattr(ais, "Missingno")
 		else:
@@ -156,11 +156,14 @@ class character(object3d):
 
 	def update(self):
 		super().update()
-		self.iframes -= 1
+		if self.iframes > 0:
+			self.iframes -= storage.deltatime
+		#this is for deltatime reasons.
+		self.physics()
 		#update locations based on speed
-		self.x += self.speed[0]/100
-		self.y += self.speed[1]/100
-		self.z += self.speed[2]/100
+		self.x += self.speed[0]/2*storage.deltatime
+		self.y += self.speed[1]/2*storage.deltatime
+		self.z += self.speed[2]/2*storage.deltatime
 		self.getpoints()
 		#check collisions with ground
 		self.checkcollide()
@@ -317,9 +320,9 @@ class character(object3d):
 			self.setanim("airdown"+str(self.angle))
 			
 	def animupdate(self):
-		self.framecounter += 1
+		self.framecounter += storage.deltatime
 		if storage.animinfo[self.name]["anims"][self.animname][self.framenumber][1] < self.framecounter:
-			self.framecounter = 0
+			self.framecounter -= storage.animinfo[self.name]["anims"][self.animname][self.framenumber][1]
 			self.framenumber += 1
 			if self.framenumber >= len(storage.animinfo[self.name]["anims"][self.animname]):
 				self.framenumber = 0
@@ -385,27 +388,27 @@ class character(object3d):
 			if self.speed[0] < self.traction:
 				self.speed[0] = 0
 			else:
-				self.speed[0] -= self.traction
+				self.speed[0] -= self.traction*storage.deltatime
 
 		elif self.speed[0] < 0:
 			if self.speed[0] > -self.traction:
 				self.speed[0] = 0
 			else:
-				self.speed[0] += self.traction
+				self.speed[0] += self.traction*storage.deltatime
 
 		if self.speed[1] > 0:
 			if self.speed[1] < self.traction:
 				self.speed[1] = 0
 			else:
-				self.speed[1] -= self.traction
+				self.speed[1] -= self.traction*storage.deltatime
 
 		elif self.speed[1] < 0:
 			if self.speed[1] > -self.traction:
 				self.speed[1] = 0
 			else:
-				self.speed[1] += self.traction
+				self.speed[1] += self.traction*storage.deltatime
 		if self.grounded == False:
-			self.speed[2] += self.gravity
+			self.speed[2] += self.gravity*storage.deltatime
 
 	def followupdates(self):
 		for charac in storage.party:
@@ -573,8 +576,8 @@ class character(object3d):
 				self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
 
 	def wait(self):
-		self.combatactions[self.combatactionsindex][1] -= 1
-		if self.combatactions[self.combatactionsindex][1] == 0:
+		self.combatactions[self.combatactionsindex][1] -= storage.deltatime
+		if self.combatactions[self.combatactionsindex][1] <= 0:
 			self.combatactionsindex += 1
 
 	def getcombatlocation(self):
@@ -1292,8 +1295,8 @@ class cutsceneplayer(sharedlib.gameobject):
 					if pygame.K_LSHIFT in storage.newkeys:
 						self.itr += 1
 				else:
-					action[1] -= 1
-					if action[1] == 0:
+					action[1] -= storage.deltatime
+					if action[1] <= 0:
 						self.itr += 1
 		if len(self.blueprint) == self.itr:
 			self.delete()
