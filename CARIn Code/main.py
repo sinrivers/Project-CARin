@@ -10,6 +10,7 @@ Purpose: master file for Project CARIn
 import pygame
 import json
 import copy
+import vn_system
 
 import storage
 
@@ -60,8 +61,8 @@ storage.orderreset = False
 storage.menus = json.load(open("menulayouts.json"))
 #the format for cutscene actions is [<affected element>,<details of effect>,<duration of affect>]
 storage.missionprogress = {
-				"main":0
-			}
+	"main":0
+}
 storage.cutscenes = {
 			"Pause":[["ui",["loadui","Dictionary"]],["wait","lshift"],["ui",["loadui","Blank"]]],
 			"Win": [["char",["CARIn","setanim","walk315"]],["ui",["loadui","Win"]],["wait","enter"]],
@@ -76,27 +77,41 @@ storage.combatactions = {
 			"PsychUp":[["checkavailabledata",10],["alterstat","spentdata",10],["alterstat","write",10],["addtimedfx","turnend",120,"alterstat",["write",-10]],["wait",60]],
 			"Runmaster":[["runmaster"]]
 			}
-storage.charmenus = {
-			"Default":{
-			"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
-			"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
-			"subroutines":[["Back"],[["menu","main"]]]},
-			"CARIn":{
-			"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
-			"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
-			"subroutines":[["Back","Psych Up"],[["menu","main"],"PsychUp"]]}
+storage.cutscenes["intro_vn"] = [
+	{"speaker": "CARIn", "text": "Welcome to Project CARIn."},
+	{"speaker": "CARIn", "text": "Your journey begins here."},
+	{"speaker": "???", "text": "Let’s see how this story unfolds..."}
+]
 
-		}
+storage.uipresets = {}
+storage.combatactions = {
+	"Nothing":[["wait",60]],
+	"Win":[["wait",60],["wipe",0],["wait",60]],
+	"staffattack":[["wait",1],["picktargethostile"],["staffattack"],["wait",600]],
+	"PsychUp":[["checkavailabledata",10],["alterstat","spentdata",10],["alterstat","write",10],["addtimedfx","turnend",120,"alterstat",["write",-10]],["wait",600]],
+	"Runmaster":[["runmaster"]]
+}
+storage.charmenus = {
+	"Default":{
+		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
+		"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
+		"subroutines":[["Back"],[["menu","main"]]]},
+	"CARIn":{
+		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
+		"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
+		"subroutines":[["Back","Psych Up"],[["menu","main"],"PsychUp"]]}
+
+}
 #NOTE: Stats are ordered thus: Max HP, Max DATA, Priority, Read, Write, Execute, Obfuscation, Persistance. modstats has extra slots at the end for damage and spent data.
 #NOTE 2: basestats is character's default stats. This is NEVER to be altered in-game. modstats is for modifications via buffs, level-ups, damage, etc.
 storage.basestats = {
-			"Missingno":[999,0,1,1,1,1,1,1],
-			"CARIn":[100,50,5,3,7,5,4,6]
-			}
+	"Missingno":[999,0,1,1,1,1,1,1],
+	"CARIn":[100,50,5,3,7,5,4,6]
+}
 storage.modstats = {
-			"Missingno":[0,0,0,0,0,0,0,0,0,0],
-			"CARIn":[0,0,0,0,0,0,0,0,0,0]
-			}
+	"Missingno":[0,0,0,0,0,0,0,0,0,0],
+	"CARIn":[0,0,0,0,0,0,0,0,0,0]
+}
 #NOTE: format for timed effects will be [triggertype,triggermods,function,arguments]
 #NOTE 2: triggertype can be: turnstart or turnend (both time-based), endofcombat, hit, <add more here later IDK>
 storage.timedfx = {
@@ -117,9 +132,8 @@ storage.levels = json.load(open("celllayouts.json"))
 storage.animinfo = json.load(open("animinfo.json"))
 storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
 storage.spritesheet.set_colorkey((255,0,255))
-genesis = menu.menubutton(0,0,0,0,"printwbutton","")
-#genesis.loadmenu("testmain")
-genesis.loadgame("test2")
+sharedlib.menu_active = True
+sharedlib.loadmenu("testmain")
 storage.savestate = gameutils.save()
 storage.runstate = gameutils.save()
 storage.winstate = gameutils.save()
@@ -157,7 +171,7 @@ while True:
 	storage.newkeys = []
 	storage.newclicks = []
 	for event in pygame.event.get():
-        	#quit logic
+		#quit logic
 		if event.type == pygame.QUIT:
 			pygame.quit()
 			quit()
@@ -191,8 +205,9 @@ while True:
 		if storage.orderreset:
 			storage.orderreset = False
 			break
-	storage.objlist.sort(key=lambda x: x.vertsort)
-	
+
+	storage.objlist.sort(key=lambda x: x.vertsort if isinstance(x.vertsort, (int, float)) else 0)
+
 	for item in storage.objlist:
 		if storage.rendered == []:
 			storage.rendered.append(item)
@@ -205,6 +220,11 @@ while True:
 			storage.rendered.insert(index,item)
 
 	#draw to screen
+
+	# (ADDED) draw the background onto the UI canvas only while the menu is active
+	if getattr(sharedlib, "menu_active", False):
+		menu.draw_background()
+
 	for obj in storage.rendered:
 		#print(storage.renderorder, "HERE")
 		obj.render()
@@ -215,4 +235,3 @@ while True:
 	storage.spritecanvas.fill((255,0,255))
 	storage.uicanvas.fill((255,0,255))
 	storage.clock.tick(60)
-	
