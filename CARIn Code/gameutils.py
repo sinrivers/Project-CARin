@@ -1,8 +1,8 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 8.1
-Date: 11/10/2025
+Version: 8.2
+Date: 11/11/2025
 Purpose: Gameplay tools for Project CARIn
 """
 #setup
@@ -158,17 +158,6 @@ class character(object3d):
 		super().update()
 		if self.iframes > 0:
 			self.iframes -= storage.deltatime
-		#this is for deltatime reasons.
-		self.physics()
-		#update locations based on speed
-		self.x += self.speed[0]/2*storage.deltatime
-		self.y += self.speed[1]/2*storage.deltatime
-		self.z += self.speed[2]/2*storage.deltatime
-		self.getpoints()
-		#check collisions with ground
-		self.checkcollide()
-		#natural decrease of speed
-		self.physics()
 
 		#process whatever actions needed for this character
 		if storage.ui.actlock == False:
@@ -200,6 +189,20 @@ class character(object3d):
 						self.combattarget = []
 						self.combatactions = []
 						self.combatactionsindex = 0
+		#natural decrease of speed
+		self.physics()
+		#update locations based on speed
+		self.x += self.speed[0]/2*storage.deltatime
+		self.y += self.speed[1]/2*storage.deltatime
+		self.z += self.speed[2]/2*storage.deltatime
+		if not self.grounded:
+			self.z += storage.deltatime * (self.speed[2]-storage.deltatime/2)
+		self.getpoints()
+		#check collisions with ground
+		self.checkcollide()
+		#this is for deltatime reasons.
+		self.physics()
+
 	def getstat(self,stat):
 		if stat == "maxhp":
 			index = 0
@@ -385,25 +388,25 @@ class character(object3d):
 
 	def physics(self):
 		if self.speed[0] > 0:
-			if self.speed[0] < self.traction:
+			if self.speed[0] < self.traction*storage.deltatime:
 				self.speed[0] = 0
 			else:
 				self.speed[0] -= self.traction*storage.deltatime
 
 		elif self.speed[0] < 0:
-			if self.speed[0] > -self.traction:
+			if self.speed[0] > -self.traction*storage.deltatime:
 				self.speed[0] = 0
 			else:
 				self.speed[0] += self.traction*storage.deltatime
 
 		if self.speed[1] > 0:
-			if self.speed[1] < self.traction:
+			if self.speed[1] < self.traction*storage.deltatime:
 				self.speed[1] = 0
 			else:
 				self.speed[1] -= self.traction*storage.deltatime
 
 		elif self.speed[1] < 0:
-			if self.speed[1] > -self.traction:
+			if self.speed[1] > -self.traction*storage.deltatime:
 				self.speed[1] = 0
 			else:
 				self.speed[1] += self.traction*storage.deltatime
@@ -776,38 +779,49 @@ class plat(collider):
 		return ["plat",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend,self.image,self.offset]]
 
 	def collidecheck(self, hitter):
-		if self.angle == 0:
-			if self.collidepoint(hitter.right) != False:
-				hitter.x -= hitter.x+hitter.w-self.x
-			if self.collidepoint(hitter.left) != False:
-				hitter.x -= hitter.x-(self.x+self.w)
-			if self.collidepoint(hitter.front) != False:
-				hitter.y -= hitter.y+hitter.h-self.y
-			if self.collidepoint(hitter.back) != False:
-				hitter.y -= hitter.y-(self.y+self.h)
-		else:
-			result = self.collidepoint(hitter.right)
-			if result != False:
-				hitter.x += result[0]
-				hitter.y += result[1]
-			result = self.collidepoint(hitter.left)
-			if result != False:
-				hitter.x += result[0]
-			result = self.collidepoint(hitter.front)
-			if result != False:
-				hitter.x += result[0]
-				hitter.y += result[1]
-			result = self.collidepoint(hitter.back)
-			if result != False:
-				hitter.x += result[0]
-				hitter.y += result[1]
 		if self.collidepoint(hitter.top) != False:
 			hitter.z -= hitter.z-self.d+self.z
+			hitter.getpoints()
 		result = self.collidepoint(hitter.bottom)
 		if result != False:
 			hitter.z -= hitter.z - (self.z-self.d+result[2])
 			hitter.speed[2] = 0
 			hitter.grounded = True
+			hitter.getpoints()
+		if self.angle == 0:
+			if self.collidepoint(hitter.right) != False:
+				hitter.x -= hitter.x+hitter.w-self.x
+				hitter.getpoints()
+			if self.collidepoint(hitter.left) != False:
+				hitter.x -= hitter.x-(self.x+self.w)
+				hitter.getpoints()
+			if self.collidepoint(hitter.front) != False:
+				hitter.y -= hitter.y+hitter.h-self.y
+				hitter.getpoints()
+			if self.collidepoint(hitter.back) != False:
+				hitter.y -= hitter.y-(self.y+self.h)
+				hitter.getpoints()
+		else:
+			result = self.collidepoint(hitter.right)
+			if result != False:
+				hitter.x += result[0]
+				hitter.y += result[1]
+				hitter.getpoints()
+			result = self.collidepoint(hitter.left)
+			if result != False:
+				hitter.x += result[0]
+				hitter.y += result[1]
+				hitter.getpoints()
+			result = self.collidepoint(hitter.front)
+			if result != False:
+				hitter.x += result[0]
+				hitter.y += result[1]
+				hitter.getpoints()
+			result = self.collidepoint(hitter.back)
+			if result != False:
+				hitter.x += result[0]
+				hitter.y += result[1]
+				hitter.getpoints()
 	def render(self):
 		if False:#self.angle == 0:
 			if storage.debug:

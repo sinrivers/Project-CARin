@@ -1,8 +1,8 @@
 """
 Filename: menu.py
-Author(s): Taliesin Reese
-Version: 1.1
-Date: 9/22/2025
+Author(s): Taliesin Reese, Ricardo Ochoa
+Version: 2.0
+Date: 11/11/2025
 Purpose: menu system for Project CARIn (simple image button version)
 """
 
@@ -98,6 +98,7 @@ def draw_background():
 # --- Menu Loader (same as before) ---
 def loadbluprint(name):
 	storage.objlist = []
+	sharedlib.menu_active = True
 	layout = storage.menus.get(name, [])
 	for item in layout:
 		cls_name, ctor_args = item[0], item[1]

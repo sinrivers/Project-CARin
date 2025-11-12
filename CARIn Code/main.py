@@ -1,8 +1,8 @@
 """
 Filename: main.py
 Author(s): Taliesin Reese
-Version: 7.1
-Date: 11/10/2025
+Version: 7.2
+Date: 11/11/2025
 Purpose: master file for Project CARIn
 """
 
@@ -45,7 +45,8 @@ storage.newclicks = []
 storage.keys = []
 storage.newkeys = []
 storage.timeadjust = False
-storage.deltatime = 1
+storage.framerate = 60
+storage.deltatime = storage.framerate/60
 
 #create worldstate
 storage.objlist = []
@@ -69,7 +70,6 @@ storage.cutscenes = {
 			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["char",["CARIn","jump"]]],
 			"test2":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","CARIn",0]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]
 		}
-storage.uipresets = {}
 storage.combatactions = {
 			"Nothing":[["wait",60]],
 			"Win":[["wait",60],["wipe",0],["wait",60]],
@@ -82,15 +82,6 @@ storage.cutscenes["intro_vn"] = [
 	{"speaker": "CARIn", "text": "Your journey begins here."},
 	{"speaker": "???", "text": "Let’s see how this story unfolds..."}
 ]
-
-storage.uipresets = {}
-storage.combatactions = {
-	"Nothing":[["wait",60]],
-	"Win":[["wait",60],["wipe",0],["wait",60]],
-	"staffattack":[["wait",1],["picktargethostile"],["staffattack"],["wait",600]],
-	"PsychUp":[["checkavailabledata",10],["alterstat","spentdata",10],["alterstat","write",10],["addtimedfx","turnend",120,"alterstat",["write",-10]],["wait",600]],
-	"Runmaster":[["runmaster"]]
-}
 storage.charmenus = {
 	"Default":{
 		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
@@ -132,8 +123,8 @@ storage.levels = json.load(open("celllayouts.json"))
 storage.animinfo = json.load(open("animinfo.json"))
 storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
 storage.spritesheet.set_colorkey((255,0,255))
-sharedlib.menu_active = True
-sharedlib.loadmenu("testmain")
+sharedlib.menu_active = False
+sharedlib.loadmenu("testsub")
 storage.savestate = gameutils.save()
 storage.runstate = gameutils.save()
 storage.winstate = gameutils.save()
@@ -147,6 +138,7 @@ while True:
 	#We should have an option to turn on/off timescaling.
 	if storage.timeadjust:
 		storage.deltatime = 60*storage.clock.get_time()/1000
+		#print(storage.deltatime)
 	#get input updates from the PIU
 	storage.mousepos = pygame.mouse.get_pos()
 	#TODO: We probably want to make the game resolution-agnostic by having all coordinates be in "units" rather than pixels. This is a spot that will require change.
@@ -206,7 +198,7 @@ while True:
 			storage.orderreset = False
 			break
 
-	storage.objlist.sort(key=lambda x: x.vertsort if isinstance(x.vertsort, (int, float)) else 0)
+	storage.objlist.sort(key=lambda x: x.vertsort if isinstance(x.vertsort, (int, float)) else x.vertsort[0])
 
 	for item in storage.objlist:
 		if storage.rendered == []:
@@ -234,4 +226,4 @@ while True:
 	storage.window.fill((0,0,0))
 	storage.spritecanvas.fill((255,0,255))
 	storage.uicanvas.fill((255,0,255))
-	storage.clock.tick(60)
+	storage.clock.tick(storage.framerate)

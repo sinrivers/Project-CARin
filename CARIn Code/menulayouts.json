@@ -2,5 +2,8 @@
   "testmain": [
     ["menubutton", [260, 200, 200, 80, "loadgame", "test2", "Start"]],
     ["menubutton", [260, 300, 200, 80, "quit", "", "Exit"]]
+  ],
+  "testsub": [
+    ["menubutton",[260, 200, 200, 80, "loadmenu", "testmain", "Start"]]
   ]
 }
