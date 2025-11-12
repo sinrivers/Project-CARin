@@ -1,8 +1,8 @@
 """
 Filename: main.py
-Author(s): Taliesin Reese
-Version: 7.2
-Date: 11/11/2025
+Author(s): Taliesin Reese, Ricardo Ochoa
+Version: 7.3
+Date: 11/12/2025
 Purpose: master file for Project CARIn
 """
 
@@ -28,6 +28,7 @@ storage.spritecanvas.set_colorkey((255,0,255))
 storage.uicanvas = pygame.display.set_mode(storage.screensize).convert()
 storage.uicanvas.set_colorkey((255,0,255))
 storage.writer = pygame.font.SysFont("Liberation Mono",12)
+storage.userwriter = pygame.font.SysFont("Comic Sans MS",12)
 if pygame.joystick.get_count() > 0:
 	storage.controller = pygame.joystick.Joystick(0)
 	#NOTE: this controller mapping is for a crummy SNES-like usb pad I have. No idea if other controllers use the same mapping. Maybe we can add reconfigurable buttons later?
@@ -78,9 +79,12 @@ storage.combatactions = {
 			"Runmaster":[["runmaster"]]
 			}
 storage.cutscenes["intro_vn"] = [
+	["Flyngal","Normal",1,[20,0]],
 	{"speaker": "CARIn", "text": "Welcome to Project CARIn."},
+	["Flyngal","EmoteTest",0,[500,0]],
 	{"speaker": "CARIn", "text": "Your journey begins here."},
-	{"speaker": "???", "text": "Let’s see how this story unfolds..."}
+	{"speaker": "???", "text": "Let’s see how this story unfolds..."},
+	"test2"
 ]
 storage.charmenus = {
 	"Default":{

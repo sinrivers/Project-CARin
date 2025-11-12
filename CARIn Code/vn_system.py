@@ -1,8 +1,8 @@
 """
 Filename:vn_system.py
-Author: Ricardo Ochoa
-Version: 1.0
-Date: Unknown
+Author(s): Ricardo Ochoa, Taliesin Reese
+Version: 2.0
+Date: 11/12/2025
 Purpose: User cutscenes for Project CARIn
 """
 # vn_system.py
@@ -32,6 +32,7 @@ class vnoverlay(sharedlib.gameobject):
         # VN panel geometry (bottom 35% of screen)
         W, H = storage.screensize
         self.pad = 16
+        self.chars = []
         self.box = pygame.Rect(self.pad, int(H*0.65), W - self.pad*2, int(H*0.30))
         self.name_height = 28
 
@@ -41,7 +42,7 @@ class vnoverlay(sharedlib.gameobject):
         self.done = False
 
         # Typewriter
-        self.speed = 2                        # chars per frame (tweak)
+        self.speed = 1                        # chars per frame (tweak)
         self.char_index = 0                   # how many chars revealed
         self.full_line = ""                   # full text of current line (unwrapped)
         self.wrapped = []                     # wrapped lines for drawing
@@ -57,7 +58,7 @@ class vnoverlay(sharedlib.gameobject):
         self.name_rect = pygame.Rect(self.box.x + 12, self.box.y - self.name_height//2, 180, self.name_height)
 
         # font from storage
-        self.font = storage.writer
+        self.font = storage.userwriter
         self.line_gap = 6
 
         # prepare first line
@@ -83,13 +84,27 @@ class vnoverlay(sharedlib.gameobject):
             self.close()
             return
         entry = self.script[self.idx]
-        self.speaker = entry.get("speaker", "")
-        self.full_line = entry.get("text", "")
-        self.char_index = 0
-        # Pre-wrap target width inside box, leaving padding
-        max_text_width = self.box.w - self.pad*2
-        self.wrapped_full = wrap_text(self.full_line, self.font, max_text_width)
-        self.wrapped = [""]  # will reveal progressively
+        if isinstance(entry,dict):
+                self.speaker = entry.get("speaker", "")
+                self.full_line = entry.get("text", "")
+                self.char_index = 0
+                # Pre-wrap target width inside box, leaving padding
+                max_text_width = self.box.w - self.pad*2
+                self.wrapped_full = wrap_text(self.full_line, self.font, max_text_width)
+                self.wrapped = [""]  # will reveal progressively
+        elif isinstance(entry,list):
+                for index in range(len(self.chars)):
+                    item = self.chars[index]
+                    if item[0] == entry[0]:
+                        self.chars[index] = [entry[0],entry[1],entry[2],item[3],entry[3]]
+                        self.idx += 1
+                        self._load_line()
+                        return
+                self.chars.append([entry[0],entry[1],entry[2],[0,0],entry[3]])
+                self.idx += 1
+                self._load_line()
+        elif isinstance(entry,str):
+            sharedlib.loadgame(entry)
 
     def _advance_or_finish(self):
         # If not fully typed, finish instantly
@@ -112,7 +127,11 @@ class vnoverlay(sharedlib.gameobject):
         # Consume input: left click (1) or ENTER/SPACE
         if 1 in storage.newclicks or pygame.K_RETURN in storage.newkeys or pygame.K_SPACE in storage.newkeys:
             self._advance_or_finish()
-
+        #NOTE: character movement display
+        for char in self.chars:
+                if char[3] != char[4]:
+                    char[3][0] += int((char[4][0] - char[3][0])/8)
+                    char[3][1] += int((char[4][1] - char[3][1])/8)
         # Typewriter tick
         if self.char_index < len(self.full_line):
             self.char_index += self.speed
@@ -122,7 +141,15 @@ class vnoverlay(sharedlib.gameobject):
 
     def render(self):
         surf = storage.uicanvas
-
+	#NOTE: Rendering Character portraits.
+        for char in self.chars:
+                name = char[0]+char[1]
+                scale = storage.animinfo["Portraits"][name]
+                if char[2] == 1:
+                    surf.blit(pygame.transform.flip(storage.spritesheet,char[2],0),char[3],[storage.spritesheet.get_width()-scale[0]-scale[2]]+scale[1:])
+                else:
+                    surf.blit(storage.spritesheet,char[3],scale)
+                    
         # Panel (semi-transparent)
         panel = pygame.Surface((self.box.w, self.box.h), pygame.SRCALPHA)
         panel.fill((*self.bg_color, self.bg_alpha))
@@ -154,6 +181,7 @@ class vnoverlay(sharedlib.gameobject):
 
 def start_cutscene(script):
     """script can be a list of dicts or a string key into storage.cutscenes."""
+    storage.objlist = []
     if isinstance(script, str):
         data = storage.cutscenes.get(script, [])
     else:
@@ -163,7 +191,6 @@ def start_cutscene(script):
         return
     sharedlib.cutscene_active = True
     overlay = vnoverlay(data)
-    storage.objlist.append(overlay)
 
 # one-liner for other code to call
 sharedlib.start_cutscene = start_cutscene

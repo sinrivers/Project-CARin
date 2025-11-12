@@ -47,7 +47,9 @@
 		}
 	},
 "Portraits":{
-	"CARInNeutral":[70,5,40,40]
+	"CARInNeutral":[70,5,40,40],
+	"FlyngalNormal":[275,0,187,480],
+	"FlyngalEmoteTest":[462,0,187,480]
 	},
 "TerrainObjs":{
 	"testblock":[0,440,55,110]

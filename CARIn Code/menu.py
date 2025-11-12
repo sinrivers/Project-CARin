@@ -1,8 +1,8 @@
 """
 Filename: menu.py
 Author(s): Taliesin Reese, Ricardo Ochoa
-Version: 2.0
-Date: 11/11/2025
+Version: 2.1
+Date: 11/12/2025
 Purpose: menu system for Project CARIn (simple image button version)
 """
 
@@ -59,7 +59,9 @@ class menubutton(sharedlib.gameobject):
 		elif self.funcname == "loadgame":
 			sharedlib.menu_active = False
 			sharedlib.loadgame(self.arg)
-			sharedlib.start_cutscene("intro_vn")
+		elif self.funcname == "loadvn":
+			sharedlib.menu_active = False
+			sharedlib.start_cutscene(self.arg)
 		elif self.funcname == "quit":            # <-- add this
 			import sys
 			pygame.quit()

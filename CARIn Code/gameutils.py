@@ -1,7 +1,7 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 8.2
+Version: 8.3
 Date: 11/11/2025
 Purpose: Gameplay tools for Project CARIn
 """
