@@ -54,12 +54,13 @@ storage.objlist = []
 storage.rendered = []
 storage.carryovers = []
 storage.persistobjs = [ ["camera3d",[0,0,0]],["uiobject",[]] ]
-storage.partyspawn = [ ["character",[250,345,-500,50,50,50,3,"CARIn"]] ]
+storage.partyspawn = [ ["character",[250,345,-500,50,50,50,3,"CARIn"]],["character",[250,345,-500,50,50,50,2,None]] ]
 storage.party = []
 storage.camfocus = [0,0]
 storage.cambounds = [0,0,storage.screensize[0],storage.screensize[1]]
 storage.debug = True
 storage.orderreset = False
+storage.actlock = False
 storage.menus = json.load(open("menulayouts.json"))
 #the format for cutscene actions is [<affected element>,<details of effect>,<duration of affect>]
 storage.missionprogress = {
@@ -100,7 +101,7 @@ storage.charmenus = {
 #NOTE: Stats are ordered thus: Max HP, Max DATA, Priority, Read, Write, Execute, Obfuscation, Persistance. modstats has extra slots at the end for damage and spent data.
 #NOTE 2: basestats is character's default stats. This is NEVER to be altered in-game. modstats is for modifications via buffs, level-ups, damage, etc.
 storage.basestats = {
-	"Missingno":[999,0,1,1,1,1,1,1],
+	"Missingno":[999,0,5,1,1,1,1,1],
 	"CARIn":[100,50,5,3,7,5,4,6]
 }
 storage.modstats = {
