@@ -1,8 +1,8 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 9.1
-Date: 11/13/2025
+Version: 10.0
+Date: 11/14/2025
 Purpose: Gameplay tools for Project CARIn
 """
 #setup
@@ -90,7 +90,7 @@ class character(object3d):
 		#NOTE: This number is here so we can uniquely identify characters--thus it MUST BE UNIQUE or it loses it's purpose.
 		#NOTE 2: Minor NPCs and Enemies who aren't part of a cutscene can scrape by without this, thus it's initialized to Null.
 		self.id = id
-		print("SPAWNING:",self.name,self.id)
+		#print("SPAWNING:",self.name,self.id)
 		self.pullglobalstats()
 		#the type of character we're dealing with is determined by self.state.
 		#Note that self.state was originally supposed to lock or unlock certain actions (i.e. the second hit of a two-hit combo),
@@ -112,10 +112,10 @@ class character(object3d):
 		self.grounded = True
 		self.walkspeed = self.getstat("priority")
 		self.jumpspeed = 5 * self.getstat("priority")
-		if self.name == None or not hasattr(ais,self.name):
-			self.combatAI = getattr(ais, "Missingno")
+		if self.name == None or not hasattr(ais,self.name+"Combat"):
+			self.combatAI = getattr(ais, "MissingnoCombat")
 		else:
-			self.combatAI = getattr(ais, self.name)
+			self.combatAI = getattr(ais, self.name+"Combat")
 		self.traction = .5
 		self.gravity = 1
 		self.interactd = 50
@@ -154,15 +154,21 @@ class character(object3d):
 		self.pullglobalstats()
 		self.walkspeed = self.getstat("priority")
 		self.jumpspeed = 5 * self.getstat("priority")
-		if self.name == None or not hasattr(ais,self.name):
-			self.combatAI = getattr(ais, "Missingno")
+		if self.name == None or not hasattr(ais,self.name+"Combat"):
+			self.combatAI = getattr(ais, "MissingnoCombat")
 		else:
-			self.combatAI = getattr(ais, self.name)
+			self.combatAI = getattr(ais, self.name+"Combat")
 		if self.state > 1:
 			storage.party.append(self)
 		if self.state == 3:
 			storage.camera.target = self
-
+	def interact(self,hitter):
+		if self.name == None:
+			getattr(ais, "MissingnoInteract")(self)
+		elif not hasattr(ais,self.name+str(self.id)+"Interact"):
+			getattr(ais, self.name+"Interact")(self)
+		else:
+			getattr(ais, self.name+str(self.id)+"Interact")(self)
 	def update(self):
 		super().update()
 		if self.iframes > 0:
@@ -465,7 +471,12 @@ class character(object3d):
 					self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
 					self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
 	def NPCupdates(self):
-		pass
+		if self.name == None:
+			getattr(ais, "MissingnoIdle")(self)
+		elif not hasattr(ais,self.name+str(self.id)+""):
+			getattr(ais, self.name+"Idle")(self)
+		else:
+			getattr(ais, self.name+str(self.id)+"Idle")(self)
 	def enemyupdates(self):
 		self.NPCupdates()
 		if self.iframes <= 0:
@@ -670,7 +681,7 @@ class character(object3d):
 
 
 	def warpto(self,point = None):
-		print("THAT ISN'T EVEN A REAL WORD")
+		#print("THAT ISN'T EVEN A REAL WORD")
 		if point == None:
 			point = self.combatactions[self.combatactionsindex][1]
 			self.combatactionsindex += 1
@@ -797,7 +808,7 @@ class character(object3d):
 					item.delete()
 		self.combatactionsindex += 1
 	def kill(self):
-		print("Why are we still here? Just to suffer?")
+		#print("Why are we still here? Just to suffer?")
 		self.combattarget[0].delete()
 		self.combattarget = self.combattarget[1:]
 		self.combatactionsindex += 1
@@ -927,7 +938,31 @@ class collider(object3d):
 											int(self.y+self.z   +self.descend[2]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
 											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),2)
-		
+class cutscenetrigger(collider):
+	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,descend = [0,0,0,0],script = "test3",once = True):
+		super().__init__(x,y,z,w,h,d,angle,descend)
+		self.script = script
+		self.once = once
+	def todata(self):
+		return ["musiczone",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend,self.script,self.once]]
+	def fromdata(self,data):
+		self.x = data[0]
+		self.y = data[1]
+		self.z = data[2]
+		self.w = data[3]
+		self.h = data[4]
+		self.d = data[5]
+		self.speed = copy.deepcopy(data[6])
+		self.grounded = data[7]
+		self.angle = data[8]
+		self.descend = data[9]
+		self.script = data[10]
+		self.once = data[11]
+	def collidecheck(self,hitter):
+		if storage.actlock == False and hitter.state == 3:
+			if self.once:
+				self.delete()
+				cutsceneplayer(self.script)	
 class musiczone(collider):
 	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,descend = [0,0,0,0],song = "bosstest.mp3"):
 		super().__init__(x,y,z,w,h,d,angle,descend)
@@ -1509,6 +1544,54 @@ def formattextforwidth(text,width):
 	out.append(buffer)
 	return out
 
+class enemyspawner(sharedlib.gameobject):
+	#NOTE: Like characters, these all need to have unique IDs. It sucks, I know.
+	#NOTE 2: We should only have one simultaneously extant instance of these per cell to avoid technical issues.
+	def __init__(self,id = 0, spawns = [ [["character",[0,0,0,50,50,50,1,None]]] ]):
+		super().__init__()
+		self.id = id
+		self.spawns = spawns
+		self.spawned = []
+		self.spawn = True
+		if self.id not in (storage.enemyspawns.keys()) or storage.enemyspawns[self.id] == []:
+			storage.enemyspawns[self.id] = copy.deepcopy(random.choice(self.spawns))
+
+	def todata(self):
+		self.update()
+		print(storage.enemyspawns[self.id])
+		return ["enemyspawner",[self.id,self.spawns,self.spawned]]
+	def fromdata(self,data):
+		self.id = data[0]
+		self.spawns = data[1]
+		self.spawned = []
+		self.spawn = False
+		for item in data[2]:
+			for object in storage.objlist:
+				if isinstance(object,character) and object.state == item.state and object.name == item.name and object.id == self.id and object not in self.spawned:
+					self.spawned.append(object)
+
+	def spawnsaved(self):
+		self.spawn = False
+		for item in storage.enemyspawns[self.id]:
+			self.spawned.append(globals()[item[0]](*item[1]))
+	def update(self):
+		index = 0
+		if self.spawn:
+			self.spawnsaved()
+		while index < len(self.spawned):
+			item = self.spawned[index]
+			if item not in storage.objlist:
+				self.spawned.remove(item)
+				storage.enemyspawns[self.id] = storage.enemyspawns[self.id][:index]+storage.enemyspawns[self.id][index+1:]
+				index -= 1
+			else:
+				#print(item.x,item.y,item.z)
+				storage.enemyspawns[self.id][index][1][0] = item.x
+				storage.enemyspawns[self.id][index][1][1] = item.y
+				storage.enemyspawns[self.id][index][1][2] = item.z
+			index += 1
+			#print(storage.enemyspawns)
+
 #as the name suggests, this manages cutscenes. It finds objects in the loaded game cell and gives them instructions, after locking down their free will for a bit.
 #however, this is also to be used for all dialog loading purposes and, if we ever make one, loading the pause menu.
 #I did not set out to make a system where the pause menu was best classified as a "cutscene", but here we are anyway.
@@ -1544,7 +1627,7 @@ class cutsceneplayer(sharedlib.gameobject):
 
 	def update(self):
 		action = self.blueprint[self.itr]
-		print(action)
+		#print(action)
 		match action[0]:
 			case "ui":
 				target = self.findui()
@@ -1610,12 +1693,12 @@ class cutsceneplayer(sharedlib.gameobject):
 		return False
 
 	def findchar(self,name,id):
-		print(name,id,"Testing...")
+		#print(name,id,"Testing...")
 		for obj in storage.objlist:
 			if isinstance(obj,character) and obj.name == name:
-				print(obj.name,obj.id)
+				#print(obj.name,obj.id)
 				if id == None or id == obj.id:
-					print("FOUND!")
+					#print("FOUND!")
 					return obj
 		return False
 
@@ -1635,7 +1718,7 @@ class combatmanager(sharedlib.gameobject):
 				self.fighters.append(obj)
 			if isinstance(obj,cutsceneplayer):
 				obj.delete()
-		self.fighters.sort(key = lambda x:x.getstat("priority"))
+		self.fighters.sort(key = lambda x:x.getstat("priority"),reverse = True)
 		self.turn = 0
 		storage.ui.setcombattant(self.fighters[self.turn])
 		storage.ui.loadui("Combat")
@@ -1645,6 +1728,11 @@ class combatmanager(sharedlib.gameobject):
 		elif self.state == 1:
 			storage.ui.loadcombatmenu("mainnorun")
 		storage.actlock = True
+		self.fighters[self.turn].combatactive = True
+		for obj in self.fighters:
+			pos = obj.getcombatlocation()
+			if [obj.x,obj.y] != pos:
+				obj.x,obj.y = pos[0],pos[1]
 		self.aborted = False
 
 	def todata(self):
@@ -1672,6 +1760,7 @@ class combatmanager(sharedlib.gameobject):
 	def update(self):
 		#print(self.turn)
 		combattant = self.fighters[self.turn]
+		#print(combattant.name)
 		if combattant.combatactive == False:
 			win = True
 			lose = True
@@ -1681,7 +1770,7 @@ class combatmanager(sharedlib.gameobject):
 				if obj.combatactive == False:
 					pos = obj.getcombatlocation()
 					if [obj.x,obj.y] != pos:
-						obj.x,obj.y = pos[0],pos[1]
+						obj.goto(pos[0],pos[1])
 				if obj not in storage.objlist:
 					self.fighters.remove(obj)
 					index -= 1
@@ -1708,7 +1797,7 @@ class combatmanager(sharedlib.gameobject):
 				self.turn += 1
 				if self.turn >= len(self.fighters):
 					self.turn = 0
-					self.fighters.sort(key = lambda x:x.getstat("priority"))
+					self.fighters.sort(key = lambda x:x.getstat("priority"),reverse = True)
 				combattant = self.fighters[self.turn]
 				combattant.combatactive = True
 				storage.ui.setcombattant(combattant)
@@ -1755,7 +1844,7 @@ class combatmanager(sharedlib.gameobject):
 					getattr(man,item[2])(*item[3])
 			man.writeglobalstats()
 		self.delete()
-		print(winanim)
+		#print(winanim)
 		cutsceneplayer(winanim)
 
 	def findchar(self,name):
@@ -1799,8 +1888,11 @@ def save():
 	# Skip known UI/non-persistent things
 	for item in storage.objlist:
 		if hasattr(item, "todata"):
-			items.append(item.todata())
-	return [debug,partyspawn,items,camerabounds,missionprogress,modstats,statuseffects,actlock]
+			thing = item.todata()
+			if thing != None:
+				items.append(thing)
+	enemyspawns = copy.deepcopy(storage.enemyspawns)
+	return [debug,partyspawn,items,camerabounds,missionprogress,modstats,statuseffects,actlock,enemyspawns]
 
 #NOTE: softload is here for loading out of combats. It is the same as load, but it neglects certain things so that story progression and item uses will carry over.
 def softload(file):
@@ -1813,7 +1905,7 @@ def softload(file):
 	for item in file[2]:
 		globals()[item[0]]().fromdata(item[1])
 	storage.actlock = file[7]
-	print(storage.objlist)
+	storage.enemyspawns = copy.deepcopy(file[8])
 
 def load(file):
 	storage.orderreset = True
@@ -1828,6 +1920,7 @@ def load(file):
 	for item in file[2]:
 		globals()[item[0]]().fromdata(item[1])
 	storage.actlock = file[7]
+	storage.enemyspawns = copy.deepcopy(file[8])
 
 def findui():
 	for obj in storage.objlist:
@@ -1866,3 +1959,5 @@ def loadbluprint(name):
 			obj = globals()[item[0]](*item[1])
 
 sharedlib.loadgame = loadbluprint
+#NOTE: Hate. Let me tell you how much I've come to hate this solution since I implemented it. There are over 1300 cubic centimeters of of brain connections in tiny gray cells that fill my skull. If the word "hate" was engraved on each nanoangstrom of those thousands of centimeters it would honestly be a bit overkill. I'm just a bit annoyed and using this as a way of venting.
+sharedlib.cutscenestart = cutsceneplayer

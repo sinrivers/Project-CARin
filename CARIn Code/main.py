@@ -1,7 +1,7 @@
 """
 Filename: main.py
 Author(s): Taliesin Reese, Ricardo Ochoa
-Version: 8.1
+Version: 9.0
 Date: 11/14/2025
 Purpose: master file for Project CARIn
 """
@@ -57,6 +57,7 @@ storage.rendered = []
 storage.carryovers = []
 storage.persistobjs = [ ["camera3d",[0,0,0]],["uiobject",[]] ]
 storage.partyspawn = [ ["character",[250,345,-500,50,50,50,3,"CARIn",0]],["character",[250,345,-500,50,50,50,2,None,0]] ]
+storage.enemyspawns = {}
 storage.party = []
 storage.camfocus = [0,0]
 storage.cambounds = [0,0,storage.screensize[0],storage.screensize[1]]
@@ -72,7 +73,8 @@ storage.cutscenes = {
 			"Pause":[["ui",["loadui","Dictionary"]],["wait","lshift"],["ui",["loadui","Blank"]]],
 			"WinCARIn0":[["char",["CARIn",0,"setanim","walk315"]]],
 			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["advancequest","main",1],["char",["CARIn",0,"jump"]]],
-			"test2":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]
+			"test2":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]],
+			"test3":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","Well that just happened"]],["wait","enter"],["ui",["loadui","Blank"]]]
 		}
 storage.combatactions = {
 			"Nothing":[["wait",60]],
@@ -141,6 +143,7 @@ storage.winstate = gameutils.save()
 #while true
 while True:
 	#print(storage.cambounds)
+	#print(storage.enemyspawns)
 	#NOTE: Hate that this has to be here
 	storage.songpriority = False
 	#NOTE: these Deltatime calculations inherently introduce bugs at super-low framerates.
