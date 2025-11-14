@@ -1,8 +1,8 @@
 """
 Filename: main.py
 Author(s): Taliesin Reese, Ricardo Ochoa
-Version: 7.3
-Date: 11/12/2025
+Version: 8
+Date: 11/123/2025
 Purpose: master file for Project CARIn
 """
 
@@ -17,9 +17,11 @@ import storage
 import sharedlib
 import menu
 import gameutils
+import soundutils
 
 #create Player Interaction Unit
 pygame.init()
+soundutils.startup()
 storage.screensize = [720,480]
 storage.clock = pygame.time.Clock()
 storage.window = pygame.display.set_mode(storage.screensize)
@@ -54,7 +56,7 @@ storage.objlist = []
 storage.rendered = []
 storage.carryovers = []
 storage.persistobjs = [ ["camera3d",[0,0,0]],["uiobject",[]] ]
-storage.partyspawn = [ ["character",[250,345,-500,50,50,50,3,"CARIn"]],["character",[250,345,-500,50,50,50,2,None]] ]
+storage.partyspawn = [ ["character",[250,345,-500,50,50,50,3,"CARIn",0]],["character",[250,345,-500,50,50,50,2,None,0]] ]
 storage.party = []
 storage.camfocus = [0,0]
 storage.cambounds = [0,0,storage.screensize[0],storage.screensize[1]]
@@ -68,8 +70,8 @@ storage.missionprogress = {
 }
 storage.cutscenes = {
 			"Pause":[["ui",["loadui","Dictionary"]],["wait","lshift"],["ui",["loadui","Blank"]]],
-			"Win": [["char",["CARIn","setanim","walk315"]],["ui",["loadui","Win"]],["wait","enter"]],
-			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["char",["CARIn","jump"]]],
+			"WinCARIn0":[["char",["CARIn",0,"setanim","walk315"]]],
+			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["advancequest","main",1],["char",["CARIn",0,"jump"]]],
 			"test2":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","CARIn",0]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]
 		}
 storage.combatactions = {
@@ -89,7 +91,7 @@ storage.cutscenes["intro_vn"] = [
 ]
 storage.charmenus = {
 	"Default":{
-		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
+		"main":[["Fight","Subroutines","Pass","Run"],["Win",["menu","subroutines"],"Nothing","Runmaster"]],
 		"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
 		"subroutines":[["Back"],[["menu","main"]]]},
 	"CARIn":{

@@ -1,8 +1,8 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 8.3
-Date: 11/11/2025
+Version: 9.0
+Date: 11/13/2025
 Purpose: Gameplay tools for Project CARIn
 """
 #setup
@@ -13,6 +13,7 @@ import math
 import copy
 import random
 import ais
+import soundutils
 
 #classes
 class object3d(sharedlib.gameobject):
@@ -83,9 +84,13 @@ class object3d(sharedlib.gameobject):
 
 
 class character(object3d):
-	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,state=0,name=None):
+	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,state=0,name=None,id = None):
 		super().__init__(x,y,z,w,h,d)
 		self.name = name
+		#NOTE: This number is here so we can uniquely identify characters--thus it MUST BE UNIQUE or it loses it's purpose.
+		#NOTE 2: Minor NPCs and Enemies who aren't part of a cutscene can scrape by without this, thus it's initialized to Null.
+		self.id = id
+		print("SPAWNING:",self.name,self.id)
 		self.pullglobalstats()
 		#the type of character we're dealing with is determined by self.state.
 		#Note that self.state was originally supposed to lock or unlock certain actions (i.e. the second hit of a two-hit combo),
@@ -124,7 +129,7 @@ class character(object3d):
 
 	def todata(self):
 		self.writeglobalstats()
-		return ["character",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.framecounter,self.framenumber,self.name,self.combatactive,self.state,self.iframes,self.angle]]
+		return ["character",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.framecounter,self.framenumber,self.name,self.combatactive,self.state,self.iframes,self.angle,self.id]]
 
 	def fromdata(self,data):
 		#NOTE: add updateable stats later
@@ -143,6 +148,7 @@ class character(object3d):
 		self.combatactive = data[11]
 		self.state = data[12]
 		self.iframes = data[13]
+		self.id = data[15]
 		self.animname = "stand0"
 		self.animpriority = False
 		self.pullglobalstats()
@@ -374,7 +380,7 @@ class character(object3d):
 			self.grounded = True
 
 	def collidecheck(self,hitter):
-		if self.iframes <= 0:
+		if self.iframes <= 0 and not storage.actlock:
 			if self.state == 1 and hitter.state == 3:
 				if self.collidepoint(hitter.center) != False:
 					self.iframes = 300
@@ -388,6 +394,7 @@ class character(object3d):
 	def jump(self):
 		self.grounded = False
 		self.speed[2] = -self.jumpspeed
+		soundutils.playsound()
 
 	def physics(self):
 		if self.speed[0] > 0:
@@ -604,7 +611,7 @@ class character(object3d):
 
 	def goto(self,pos = None):
 		if pos == None:
-			print("WHY AM I REACHING YOU AT THE COORDINATES OF THE ABANDONED SPACE STATION")
+			#print("WHY AM I REACHING YOU AT THE COORDINATES OF THE ABANDONED SPACE STATION")
 			pos = self.combatactions[self.combatactionsindex][1]
 		if [self.x,self.y] == [pos[0],pos[1]]:
 			self.combatactionsindex += 1
@@ -962,16 +969,16 @@ class warpzone(collider):
 				for char in storage.party:
 					#they should walk to a set point
 					if char.state == 3:
-						before.append(["char",[char.name,"gotocutscenewait",self.outloc]])
+						before.append(["char",[char.name,char.id,"gotocutscenewait",self.outloc]])
 					else:
-						before.append(["char",[char.name,"goto",self.outloc]])
+						before.append(["char",[char.name,char.id,"goto",self.outloc]])
 					#then they should warp to a set point
-					base.append(["char",[char.name,"warpto",self.warploc]])
+					base.append(["char",[char.name,char.id,"warpto",self.warploc]])
 					#then they should walk to ANOTHER point.
 					if char.state == 3:
-						after.append(["char",[char.name,"gotocutscenewait",self.inloc]])
+						after.append(["char",[char.name,char.id,"gotocutscenewait",self.inloc]])
 					else:
-						after.append(["char",[char.name,"goto",self.inloc]])
+						after.append(["char",[char.name,char.id,"goto",self.inloc]])
 				base = before + base + after
 				print(base)
 				cutsceneplayer(base)
@@ -1487,6 +1494,7 @@ class cutsceneplayer(sharedlib.gameobject):
 
 	def update(self):
 		action = self.blueprint[self.itr]
+		print(action)
 		match action[0]:
 			case "ui":
 				target = self.findui()
@@ -1496,12 +1504,20 @@ class cutsceneplayer(sharedlib.gameobject):
 					getattr(target,action[1][0])(*action[1][1:])
 				self.itr += 1
 			case "char":
-				target = self.findchar(action[1][0])
-				if not target:
-					pass
-					result = True
+				if isinstance(action[1][1],int) or action[1][1] == None:
+					target = self.findchar(action[1][0],action[1][1])
+					if not target:
+						pass
+						result = True
+					else:
+						result = getattr(target,action[1][2])(*action[1][3:])
 				else:
-					result = getattr(target,action[1][1])(*action[1][2:])
+					target = self.findchar(action[1][0],id)
+					if not target:
+						pass
+						result = True
+					else:
+						result = getattr(target,action[1][1])(*action[1][2:])
 				if result != False:
 					self.itr += 1
 			case "loadfromui":
@@ -1521,6 +1537,10 @@ class cutsceneplayer(sharedlib.gameobject):
 					action[1] -= storage.deltatime
 					if action[1] <= 0:
 						self.itr += 1
+			case "advancequest":
+				if storage.missionprogress[action[1]] < action[2]:
+					storage.missionprogress[action[1]] = action[2]
+				self.itr += 1
 			case "loadgame":
 				sharedlib.loadgame(action[1])
 				self.itr += 1
@@ -1533,10 +1553,14 @@ class cutsceneplayer(sharedlib.gameobject):
 				return obj
 		return False
 
-	def findchar(self,name):
+	def findchar(self,name,id):
+		print(name,id,"Testing...")
 		for obj in storage.objlist:
 			if isinstance(obj,character) and obj.name == name:
-				return obj
+				print(obj.name,obj.id)
+				if id == None or id == obj.id:
+					print("FOUND!")
+					return obj
 		return False
 
 	def delete(self):
@@ -1665,14 +1689,18 @@ class combatmanager(sharedlib.gameobject):
 		softload(storage.runstate)
 
 	def win(self):
+		winanim = [["ui",["loadui","Win"]],["wait","enter"]]
 		for man in self.fighters:
+			if man.name != None:
+				winanim.insert(1,*(storage.cutscenes["Win"+man.name+str(man.id)]))
 			for item in man.timedfx:
 				if item[0] == "combatend":
 					man.timedfx.remove(item)
 					getattr(man,item[2])(*item[3])
 			man.writeglobalstats()
 		self.delete()
-		cutsceneplayer("Win")
+		print(winanim)
+		cutsceneplayer(winanim)
 
 	def findchar(self,name):
 		for obj in storage.objlist:
@@ -1753,6 +1781,15 @@ def loadbluprint(name):
 	storage.orderreset = True
 	for item in storage.persistobjs+storage.levels.get(name):
 		#print(item)
-		obj = globals()[item[0]](*item[1])
+		#NOTE: Every item has a spawn conditions array. Each entry is of the form [checktype,value1,value2...] and will stop the object from spawning if one of the entries represents a true condition.
+		spawn = True
+		if len(item) == 3:
+			for cond in item[2]:
+				match cond[0]:
+					case "earlierinplot":
+						if storage.missionprogress[cond[1]] < cond[2]:
+							spawn = False
+		if spawn:
+			obj = globals()[item[0]](*item[1])
 
 sharedlib.loadgame = loadbluprint
