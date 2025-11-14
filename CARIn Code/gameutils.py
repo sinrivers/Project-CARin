@@ -1,7 +1,7 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 9.0
+Version: 9.1
 Date: 11/13/2025
 Purpose: Gameplay tools for Project CARIn
 """
@@ -167,7 +167,8 @@ class character(object3d):
 		super().update()
 		if self.iframes > 0:
 			self.iframes -= storage.deltatime
-
+		if self.getstat("damage") > self.getstat("maxhp"):
+			self.setstat("damage",self.getstat("maxhp")-1)
 		#process whatever actions needed for this character
 		if storage.actlock == False:
 			for item in self.timedfx:
@@ -539,6 +540,12 @@ class character(object3d):
 			self.interactpoint = [self.center[0]+(self.interactd)*math.cos(self.angle/180*math.pi),
 				      self.center[1]-(self.interactd)*math.sin(self.angle/180*math.pi),
 				      self.z-self.d/2]
+	def skipturn(self):
+		if self.combatactions[self.combatactionsindex][1] > 0:
+			self.combatactions[self.combatactionsindex][1] -= 1
+			self.combatactive = False
+		else:
+			self.combatactionsindex += 1
 	def runmaster(self):
 		target = findcombatman()
 		target.aborted = True
@@ -550,6 +557,8 @@ class character(object3d):
 
 	def staffattack(self):
 		damage = 15 * (self.getstat("write")-self.combattarget[0].getstat("persistence"))
+		if damage < 0:
+			damage = 0
 		print(damage)
 		self.combattarget[0].alterstat("damage",damage)
 		for item in self.combattarget[0].timedfx:
@@ -564,7 +573,7 @@ class character(object3d):
 
 	def gotocutscenewait(self,pos = None):
 		if pos == None:
-			print("WHY AM I REACHING YOU AT THE COORDINATES OF THE ABANDONED SPACE STATION")
+			#print("WHY AM I REACHING YOU AT THE COORDINATES OF THE ABANDONED SPACE STATION")
 			pos = self.combatactions[self.combatactionsindex][1]
 		if [self.x,self.y] == [pos[0],pos[1]]:
 			self.combatactionsindex += 1
@@ -572,6 +581,7 @@ class character(object3d):
 			if (self.x-pos[0])**2 + (self.y-pos[1])**2 < self.walkspeed**2:
 				self.x = pos[0]
 				self.y = pos[1]
+				self.speed = [0,0,0]
 				self.combatactionsindex += 1
 			else:
 				angleamt = [0,0]
@@ -607,6 +617,7 @@ class character(object3d):
 						self.angle = 135
 				self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
 				self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+				self.animpicker()
 				return False
 
 	def goto(self,pos = None):
@@ -619,6 +630,7 @@ class character(object3d):
 			if (self.x-pos[0])**2 + (self.y-pos[1])**2 < self.walkspeed**2:
 				self.x = pos[0]
 				self.y = pos[1]
+				self.speed = [0,0,0]
 				self.combatactionsindex += 1
 			else:
 				angleamt = [0,0]
@@ -654,6 +666,7 @@ class character(object3d):
 						self.angle = 135
 				self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
 				self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+				self.animpicker()
 
 
 	def warpto(self,point = None):
@@ -669,13 +682,14 @@ class character(object3d):
 		if self.combattarget[0].state < 2:
 			pos = [self.combattarget[0].x-20-self.w,self.combattarget[0].y]
 		else:
-			pos = [self.combattarget[0].x+20,self.combattarget[0].y]
+			pos = [self.combattarget[0].x+20+self.combattarget[0].w,self.combattarget[0].y]
 		if [self.x,self.y] == [pos[0],pos[1]]:
 			self.combatactionsindex += 1
 		else:
 			if (self.x-pos[0])**2 + (self.y-pos[1])**2 < self.walkspeed**2:
 				self.x = pos[0]
 				self.y = pos[1]
+				self.speed = [0,0,0]
 				self.combatactionsindex += 1
 			else:
 				angleamt = [0,0]
@@ -709,8 +723,8 @@ class character(object3d):
 						self.angle = 225
 					else:
 						self.angle = 135
-				self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
-				self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+				self.speed[0] = 2*self.walkspeed*math.cos(self.angle/180*math.pi)
+				self.speed[1] = -2*self.walkspeed*math.sin(self.angle/180*math.pi)
 
 	def wait(self):
 		self.combatactions[self.combatactionsindex][1] -= storage.deltatime
@@ -739,33 +753,37 @@ class character(object3d):
 			return [0,0]
 
 	def picktargethostile(self):
-		target = findcombatman()
-		if self.combattarget == []:
-			for item in target.fighters:
-				if item.state == 1:
-					self.combattarget.append(item)
-					break
-
-		if pygame.K_RETURN in storage.newkeys:
+		if self.state == 1:
+			self.combattarget.append(random.choice(storage.party))
 			self.combatactionsindex += 1
-		elif pygame.K_BACKSPACE in storage.newkeys:
-			self.combatactions = []
-			self.combatactionsindex = 0
-		elif pygame.K_DOWN in storage.newkeys:
-			index = index(target.fighters,self.combattarget[-1])
-			for i in range(index+1,len(target.fighters)):
-				if target.fighters[i].state < 2:
-					self.combattarget.append(target.fighters[i])
-					break
-		elif pygame.K_UP in storage.newkeys:
-			index = index(target.fighters,self.combattarget[-1])
-			for i in range(index,0,-1):
-				if target.fighters[i].state == 1:
-					self.combattarget.append(target.fighters[i])
-					break
-		for item in self.combattarget[:-1]:
-			pygame.draw.rect(storage.spritecanvas,(255,255,0),[item.x-10,item-10,item.w+20,item.h+20],5)
-		pygame.draw.rect(storage.spritecanvas,(255,255,255),[self.combattarget[-1].x-10,self.combattarget[-1].y-10,self.combattarget[-1].w+20,self.combattarget[-1].h+20],5)
+		elif self.state in [2,3]:
+			target = findcombatman()
+			if self.combattarget == []:
+				for item in target.fighters:
+					if item.state == 1:
+						self.combattarget.append(item)
+						break
+	
+			if pygame.K_RETURN in storage.newkeys:
+				self.combatactionsindex += 1
+			elif pygame.K_BACKSPACE in storage.newkeys:
+				self.combatactions = []
+				self.combatactionsindex = 0
+			elif pygame.K_DOWN in storage.newkeys:
+				index = index(target.fighters,self.combattarget[-1])
+				for i in range(index+1,len(target.fighters)):
+					if target.fighters[i].state < 2:
+						self.combattarget.append(target.fighters[i])
+						break
+			elif pygame.K_UP in storage.newkeys:
+				index = index(target.fighters,self.combattarget[-1])
+				for i in range(index,0,-1):
+					if target.fighters[i].state == 1:
+						self.combattarget.append(target.fighters[i])
+						break
+			for item in self.combattarget[:-1]:
+				pygame.draw.rect(storage.spritecanvas,(255,255,0),[item.x-10,item-10,item.w+20,item.h+20],5)
+			pygame.draw.rect(storage.spritecanvas,(255,255,255),[self.combattarget[-1].x-10,self.combattarget[-1].y-10,self.combattarget[-1].w+20,self.combattarget[-1].h+20],5)
 		
 
 	def wipe(self):
@@ -909,6 +927,33 @@ class collider(object3d):
 											int(self.y+self.z   +self.descend[2]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
 											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),2)
+		
+class musiczone(collider):
+	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,descend = [0,0,0,0],song = "bosstest.mp3"):
+		super().__init__(x,y,z,w,h,d,angle,descend)
+		self.song = song
+	def todata(self):
+		return ["musiczone",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend,self.song]]
+	def fromdata(self,data):
+		self.x = data[0]
+		self.y = data[1]
+		self.z = data[2]
+		self.w = data[3]
+		self.h = data[4]
+		self.d = data[5]
+		self.speed = copy.deepcopy(data[6])
+		self.grounded = data[7]
+		self.angle = data[8]
+		self.descend = data[9]
+		self.song = data[10]
+	def collidecheck(self,hitter):
+		if storage.actlock == False and hitter.state == 3:
+			soundutils.playsong(self.song)
+			storage.songpriority = True
+	def delete(self):
+		super().delete()
+		soundutils.stopsong()
+
 class warpzone(collider):
 	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,descend = [0,0,0,0],outloc = [0,0,0],warploc = [0,0,0],inloc = [0,0,0],preserveoffset = 0,cell = "test2"):
 		super().__init__(x,y,z,w,h,d,angle,descend)
@@ -936,7 +981,6 @@ class warpzone(collider):
 		self.inloc = data[12]
 		self.preserveoffset = data[13]
 		self.cell = data[14]
-
 	def collidecheck(self,hitter):
 		if storage.actlock == False and hitter.state == 3:
 			result = self.collidepoint(hitter.center)
@@ -1321,6 +1365,12 @@ class uiobject(sharedlib.gameobject):
 		self.combattant = combattant
 
 	def setspeaker(self,name,side = 0,emote="Neutral"):
+		
+		if name == "partyleader":
+			for item in storage.party:
+				if item.state == 3:
+					name = item.name
+					break
 		for item in self.diachars:
 			if name == item[0]:
 				item[1] = emote
@@ -1504,6 +1554,12 @@ class cutsceneplayer(sharedlib.gameobject):
 					getattr(target,action[1][0])(*action[1][1:])
 				self.itr += 1
 			case "char":
+				if action[1][0] == "partyleader":
+					for item in storage.party:
+						if item.state == 3:
+							action[1][0] = item.name
+							action[1][1] = item.id
+							break
 				if isinstance(action[1][1],int) or action[1][1] == None:
 					target = self.findchar(action[1][0],action[1][1])
 					if not target:
@@ -1714,6 +1770,22 @@ class party(sharedlib.gameobject):
 		for item in storage.partyspawn:
 			obj = globals()[item[0]](*item[1])
 
+class musicbg(sharedlib.gameobject):
+	def __init__(self,song = "Christmas.wav",force = False):
+		super().__init__()
+		self.song = song
+		self.force = force
+	def todata(self):
+		return ["musicbg",[self.song,self.force]]
+	def fromdata(self,data):
+		self.song = data[0]
+		self.force = data[1]
+	def update(self):
+		if storage.songpriority == False:
+			soundutils.playsong(self.song,not self.force)
+	def delete(self):
+		super().delete()
+		soundutils.stopsong()
 #save and load functions
 def save():
 	debug = storage.debug
@@ -1741,6 +1813,7 @@ def softload(file):
 	for item in file[2]:
 		globals()[item[0]]().fromdata(item[1])
 	storage.actlock = file[7]
+	print(storage.objlist)
 
 def load(file):
 	storage.orderreset = True

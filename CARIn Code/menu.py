@@ -1,16 +1,23 @@
 """
 Filename: menu.py
 Author(s): Taliesin Reese, Ricardo Ochoa
-Version: 2.1
-Date: 11/12/2025
+Version: 2.2
+Date: 11/14/2025
 Purpose: menu system for Project CARIn (simple image button version)
 """
 
 import pygame
 import storage
 import sharedlib
+import soundutils
 
 
+class menusongplayer(sharedlib.gameobject):
+	def __init__(self,song):
+		super().__init__()
+		self.song = song
+	def update(self):
+		soundutils.playsong(storage.song)
 class menubutton(sharedlib.gameobject):
 	def __init__(self, x, y, w, h, funcname, arg, label=""):
 		super().__init__()

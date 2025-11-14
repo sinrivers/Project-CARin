@@ -10,4 +10,4 @@ import random
 import copy
 
 def Missingno(agent):
-	agent.combatactions = copy.deepcopy(storage.combatactions[random.choice(["PsychUp","Nothing"])])
+	agent.combatactions = copy.deepcopy(storage.combatactions[random.choice(["staffattack"])])

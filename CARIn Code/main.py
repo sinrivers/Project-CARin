@@ -1,8 +1,8 @@
 """
 Filename: main.py
 Author(s): Taliesin Reese, Ricardo Ochoa
-Version: 8
-Date: 11/123/2025
+Version: 8.1
+Date: 11/14/2025
 Purpose: master file for Project CARIn
 """
 
@@ -72,14 +72,15 @@ storage.cutscenes = {
 			"Pause":[["ui",["loadui","Dictionary"]],["wait","lshift"],["ui",["loadui","Blank"]]],
 			"WinCARIn0":[["char",["CARIn",0,"setanim","walk315"]]],
 			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["advancequest","main",1],["char",["CARIn",0,"jump"]]],
-			"test2":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","CARIn",0]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]
+			"test2":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]]
 		}
 storage.combatactions = {
 			"Nothing":[["wait",60]],
 			"Win":[["wait",60],["wipe",0],["wait",60]],
 			"staffattack":[["wait",1],["picktargethostile"],["gototarget"],["staffattack"],["wait",60]],
 			"PsychUp":[["checkavailabledata",10],["alterstat","spentdata",10],["alterstat","write",10],["addtimedfx","turnend",120,"alterstat",["write",-10]],["wait",60]],
-			"Runmaster":[["runmaster"]]
+			"Runmaster":[["runmaster"]],
+			"SkipTwo":[["skipturn",2]]
 			}
 storage.cutscenes["intro_vn"] = [
 	["Flyngal","Normal",1,[20,0]],
@@ -91,19 +92,19 @@ storage.cutscenes["intro_vn"] = [
 ]
 storage.charmenus = {
 	"Default":{
-		"main":[["Fight","Subroutines","Pass","Run"],["Win",["menu","subroutines"],"Nothing","Runmaster"]],
+		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
 		"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
 		"subroutines":[["Back"],[["menu","main"]]]},
 	"CARIn":{
 		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
 		"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
-		"subroutines":[["Back","Psych Up"],[["menu","main"],"PsychUp"]]}
+		"subroutines":[["Back","Psych Up","Skip your next two turns, for some reason"],[["menu","main"],"PsychUp","SkipTwo"]]}
 
 }
 #NOTE: Stats are ordered thus: Max HP, Max DATA, Priority, Read, Write, Execute, Obfuscation, Persistance. modstats has extra slots at the end for damage and spent data.
 #NOTE 2: basestats is character's default stats. This is NEVER to be altered in-game. modstats is for modifications via buffs, level-ups, damage, etc.
 storage.basestats = {
-	"Missingno":[999,0,5,1,1,1,1,1],
+	"Missingno":[100,0,5,1,2,1,1,1],
 	"CARIn":[100,50,5,3,7,5,4,6]
 }
 storage.modstats = {
@@ -131,7 +132,7 @@ storage.animinfo = json.load(open("animinfo.json"))
 storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
 storage.spritesheet.set_colorkey((255,0,255))
 sharedlib.menu_active = False
-sharedlib.loadmenu("testsub")
+sharedlib.loadgame("test2")
 storage.savestate = gameutils.save()
 storage.runstate = gameutils.save()
 storage.winstate = gameutils.save()
@@ -140,6 +141,8 @@ storage.winstate = gameutils.save()
 #while true
 while True:
 	#print(storage.cambounds)
+	#NOTE: Hate that this has to be here
+	storage.songpriority = False
 	#NOTE: these Deltatime calculations inherently introduce bugs at super-low framerates.
 	#I feel like I fixed these in my last game, but can't recall or rediscover how. 
 	#We should have an option to turn on/off timescaling.

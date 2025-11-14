@@ -12,6 +12,7 @@
 	  ["warpzone",[0,0,0,720,50,50,0,[0,0,0,0],[0,-50,0],[0,480,0],[0,380,0],1,"angletest"]],
 	  ["character",[300,400,0,50,50,50,0,null]],
 	  ["character",[0,0,0,50,50,50,1,null],[["earlierinplot","main",1]]],
+	  ["musicbg",[]],
 	  ["party",[0]] ],
 "angletest":[ ["plat",[200,110,0,100,100,15,0,[0,15,15,0]]],
 	      ["warpzone",[0,430,0,720,50,50,0,[0,0,0,0],[0,480,0],[0,-50,0],[0,50,0],1]],
@@ -19,5 +20,6 @@
 "fighttest":[ ["mapdisplay",["Bigtest",0,0]],
 	      ["party",[0]],
 	      ["character",[300,400,0,50,50,50,1]],
+	      ["musicbg",["bosstest.mp3",false]],
 	      ["combatmanager",[0]] ]
 }
