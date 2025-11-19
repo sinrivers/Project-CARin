@@ -1,8 +1,8 @@
 """
 Filename: gameutils.py
 Author: Taliesin Reese
-Version: 10.0
-Date: 11/14/2025
+Version: 10.1
+Date: 11/18/2025
 Purpose: Gameplay tools for Project CARIn
 """
 #setup
@@ -317,29 +317,38 @@ class character(object3d):
 			self.combatactionsindex += 1
 			
 
-	def setanim(self,name,request=False):
-		if self.animpriority == False or request == True:
-			if self.animname != name:
-				self.animname = name
-				self.animpriority = request
-				self.framenumber = 0
-				self.framecounter = 0
+	def setanim(self,name,angle = None,request=False):
+		if angle != None:
+			fullname = name + str(angle)
 		else:
-			self.queuedanim = name
+			fullname = name
+		if self.animpriority == False or request == True:
+			if self.animname != fullname:
+				if name not in self.animname:
+					self.framenumber = 0
+					self.framecounter = 0
+				self.animname = fullname
+				self.animpriority = request
+		else:
+			self.queuedanim = fullname
 
 	def animpicker(self):
 		#pick an animation
 		if self.speed[0] > 0 or self.speed[1] > 0:
-			self.setanim("walk"+str(self.angle))
+			self.setanim("walk",str(self.angle))
 		else:
-			self.setanim("stand"+str(self.angle))
+			self.setanim("stand",str(self.angle))
 		if self.speed[2] < 0:
-			self.setanim("airup"+str(self.angle))
+			self.setanim("airup",str(self.angle))
 		elif self.speed[2] > 0:
-			self.setanim("airdown"+str(self.angle))
+			self.setanim("airdown",str(self.angle))
 			
 	def animupdate(self):
 		self.framecounter += storage.deltatime
+		#NOTE: This is butt-covering. It's here to prevent an animation change from crashing if angled animations have divers frame counts (which should be avoided, but just in case).
+		if len(storage.animinfo[self.name]["anims"][self.animname]) < self.framenumber:
+			self.framenumber = 0
+			self.framecounter = 0
 		if storage.animinfo[self.name]["anims"][self.animname][self.framenumber][1] < self.framecounter:
 			self.framecounter -= storage.animinfo[self.name]["anims"][self.animname][self.framenumber][1]
 			self.framenumber += 1
@@ -1021,6 +1030,7 @@ class warpzone(collider):
 			result = self.collidepoint(hitter.center)
 			if result != False:
 				#larger types of warp zones may benefit from allowing the player to preserve his position relative to the zone.
+				print(self.inloc)
 				match self.preserveoffset:
 					#preserve x-offset
 					case 1:
@@ -1040,6 +1050,7 @@ class warpzone(collider):
 						self.outloc[1] -= self.y-hitter.y
 						self.inloc[0] -= self.x-hitter.x
 						self.inloc[1] -= self.y-hitter.y
+				print(self.inloc)
 
 				base = [["loadgame",self.cell]]
 				before = []
@@ -1048,14 +1059,14 @@ class warpzone(collider):
 				for char in storage.party:
 					#they should walk to a set point
 					if char.state == 3:
-						before.append(["char",[char.name,char.id,"gotocutscenewait",self.outloc]])
+						base = [["char",[char.name,char.id,"gotocutscenewait",self.outloc]]] + base
 					else:
 						before.append(["char",[char.name,char.id,"goto",self.outloc]])
 					#then they should warp to a set point
 					base.append(["char",[char.name,char.id,"warpto",self.warploc]])
 					#then they should walk to ANOTHER point.
 					if char.state == 3:
-						after.append(["char",[char.name,char.id,"gotocutscenewait",self.inloc]])
+						base += [["char",[char.name,char.id,"gotocutscenewait",self.inloc]]]
 					else:
 						after.append(["char",[char.name,char.id,"goto",self.inloc]])
 				base = before + base + after
@@ -1169,11 +1180,11 @@ class plat(collider):
 
 
 class mapdisplay(sharedlib.gameobject):
-	def __init__(self,path="testmap",x=0,y=0):
+	def __init__(self,path="testmap",x=0,y=0,scale=1):
 		super().__init__()
 		self.x = x
 		self.y = y
-		self.image = pygame.image.load(f"Assets/graphics/{path}.png").convert()
+		self.image = pygame.transform.scale_by(pygame.image.load(f"Assets/graphics/{path}.png").convert(),scale)
 		self.path = path
 		self.w,self.h = self.image.get_size()
 
@@ -1186,21 +1197,14 @@ class mapdisplay(sharedlib.gameobject):
 		self.w = data[2]
 		self.h = data[3]
 		self.path = data[4]
-		self.image = pygame.image.load(f"Assets/graphics/{self.path}.png").convert()
+		self.image = pygame.transform.scale_by(pygame.image.load(f"Assets/graphics/self.{path}.png").convert(),scale)
 
 	def update(self):
 		super().update()
-		if self not in storage.objlist:
-			print("Why is this still happening?")
-		if self.x < storage.cambounds[0]:
-			storage.cambounds[0] = self.x
-		if self.x+self.w > storage.cambounds[2]:
-			storage.cambounds[2] = self.x+self.w
-			print(self.path)
-		if self.y < storage.cambounds[1]:
-			storage.cambounds[1] = self.y
-		if self.y+self.h > storage.cambounds[3]:
-			storage.cambounds[3] = self.y+self.h
+		storage.cambounds[0] = self.x
+		storage.cambounds[2] = self.x+self.w
+		storage.cambounds[1] = self.y
+		storage.cambounds[3] = self.y+self.h
 
 	def render(self):
 		storage.window.blit(self.image, [int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h])	
@@ -1874,7 +1878,8 @@ class musicbg(sharedlib.gameobject):
 			soundutils.playsong(self.song,not self.force)
 	def delete(self):
 		super().delete()
-		soundutils.stopsong()
+		#NOTE: This is commented out for now, and I don't THINK it should come up in the demo. HOWEVER, it is stupid and should be fixed.
+		#soundutils.stopsong()
 #save and load functions
 def save():
 	debug = storage.debug

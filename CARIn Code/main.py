@@ -1,8 +1,8 @@
 """
 Filename: main.py
 Author(s): Taliesin Reese, Ricardo Ochoa
-Version: 9.0
-Date: 11/14/2025
+Version: 9.1
+Date: 11/18/2025
 Purpose: master file for Project CARIn
 """
 
@@ -65,10 +65,11 @@ storage.debug = True
 storage.orderreset = False
 storage.actlock = False
 storage.menus = json.load(open("menulayouts.json"))
-#the format for cutscene actions is [<affected element>,<details of effect>,<duration of affect>]
+storage.songplaying = None
 storage.missionprogress = {
 	"main":0
 }
+#NOTE: the format for cutscene actions is [<affected element>,<details of effect>,<duration of affect>]
 storage.cutscenes = {
 			"Pause":[["ui",["loadui","Dictionary"]],["wait","lshift"],["ui",["loadui","Blank"]]],
 			"WinCARIn0":[["char",["CARIn",0,"setanim","walk315"]]],
@@ -90,7 +91,7 @@ storage.cutscenes["intro_vn"] = [
 	["Flyngal","EmoteTest",0,[500,0]],
 	{"speaker": "CARIn", "text": "Your journey begins here."},
 	{"speaker": "???", "text": "Let’s see how this story unfolds..."},
-	"test2"
+	"SiVa1"
 ]
 storage.charmenus = {
 	"Default":{
@@ -134,7 +135,8 @@ storage.animinfo = json.load(open("animinfo.json"))
 storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
 storage.spritesheet.set_colorkey((255,0,255))
 sharedlib.menu_active = False
-sharedlib.loadgame("test2")
+#sharedlib.loadmenu("testsub")
+sharedlib.loadgame("MeWo1")
 storage.savestate = gameutils.save()
 storage.runstate = gameutils.save()
 storage.winstate = gameutils.save()
