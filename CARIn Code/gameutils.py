@@ -272,13 +272,18 @@ class character(object3d):
 			self.combatactionsindex += 1
 
 	def pullglobalstats(self):
-		if self.name == None:
+		if self.name not in storage.basestats.keys():
 			self.basestats = copy.deepcopy(storage.basestats["Missingno"])
-			self.modstats = copy.deepcopy(storage.modstats["Missingno"])
-			self.timedfx = copy.deepcopy(storage.timedfx["Missingno"])
 		else:
 			self.basestats = copy.deepcopy(storage.basestats[self.name])
+		if self.name not in storage.modstats.keys():
 			self.modstats = copy.deepcopy(storage.modstats[self.name])
+		else:
+			self.modstats = copy.deepcopy(storage.modstats["Missingno"])
+		if self.name not in storage.timedfx.keys():
+			self.timedfx = copy.deepcopy(storage.timedfx["Missingno"])
+		else:
+			
 			self.timedfx = copy.deepcopy(storage.timedfx[self.name])
 
 	def writeglobalstats(self):
@@ -334,6 +339,7 @@ class character(object3d):
 
 	def animpicker(self):
 		#pick an animation
+		roundedangle = 45*round(self.angle/45)
 		if self.speed[0] > 0 or self.speed[1] > 0:
 			self.setanim("walk",str(self.angle))
 		else:
@@ -444,40 +450,10 @@ class character(object3d):
 			if charac.state == 3:
 				dist = (charac.x-self.x)**2+(charac.y-self.y)**2+(charac.z-self.z)**2
 				if dist > 5000:
-					angleamt = [0,0]
-					if self.x < charac.x:
-						angleamt[0] = 1
-					elif self.x > charac.x:
-						angleamt[0] = -1
-					if self.y < charac.y:
-						angleamt[1] = 1
-					elif self.y > charac.y:
-						angleamt[1] = -1
+					self.angle = math.atan2(self.y-charac.y,self.x-charac.x)*180/math.pi
 					if self.z > charac.z and self.grounded == True:
 						self.jump()
-
-					if angleamt[0] == 0:
-						if angleamt[1] == 0:
-							pass
-						elif angleamt[1] > 0:
-							self.angle = 270
-						else:
-							self.angle = 90
-					elif angleamt[0] > 0:
-						if angleamt[1] == 0:
-							self.angle = 0
-						elif angleamt[1] > 0:
-							self.angle = 315
-						else:
-							self.angle = 45
-					else:
-						if angleamt[1] == 0:
-							self.angle = 180
-						elif angleamt[1] > 0:
-							self.angle = 225
-						else:
-							self.angle = 135
-					self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
+					self.speed[0] = -self.walkspeed*math.cos(self.angle/180*math.pi)
 					self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
 	def NPCupdates(self):
 		if self.name == None:
@@ -492,15 +468,10 @@ class character(object3d):
 			for charac in storage.party:
 				if charac.state == 3:
 					dist = (charac.x-self.x)**2+(charac.y-self.y)**2+(charac.z-self.z)**2
-					if True:
-						if self.x < charac.x:
-							self.speed[0] = self.walkspeed
-						elif self.x > charac.x:
-							self.speed[0] = -self.walkspeed
-						if self.y < charac.y:
-							self.speed[1] = self.walkspeed
-						elif self.y > charac.y:
-							self.speed[1] = -self.walkspeed
+					if dist < 100000:
+						self.angle = math.atan2(self.y-charac.y,self.x-charac.x)*180/math.pi
+						self.speed[0] = -self.walkspeed*math.cos(self.angle/180*math.pi)
+						self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
 					
 	def controlupdates(self):
 		#get control updates
@@ -545,6 +516,7 @@ class character(object3d):
 			self.jump()
 		
 		if pygame.K_RETURN in storage.newkeys:
+			print(self.x,self.y)
 			for obj in storage.objlist:
 				if isinstance(obj, object3d):
 					if obj != self and obj.collidepoint(self.interactpoint):
@@ -1131,6 +1103,10 @@ class plat(collider):
 				pygame.draw.rect(storage.spritecanvas, (255,0,255), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h+self.d))
 		else:
 			if storage.debug:
+				if self.image == "Blank":
+					width = 2
+				else:
+					width = 0
 				pygame.draw.polygon(storage.spritecanvas, (0,100,0), ([int(self.x-storage.camfocus[0]),
 											int(self.y-storage.camfocus[1])],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
@@ -1151,7 +1127,7 @@ class plat(collider):
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle)-self.h*math.sin(self.angle))),
 											int(self.y+(self.z)-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
-											int(self.y+(self.z)-storage.camfocus[1]+(self.h*math.cos(self.angle)))]))
+											int(self.y+(self.z)-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),width)
 				pygame.draw.polygon(storage.spritecanvas, (0,255,0), ([int(self.x-storage.camfocus[0]),
 											int(self.y+self.z   +self.descend[0]   -self.d-storage.camfocus[1])],
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle))),
@@ -1159,7 +1135,9 @@ class plat(collider):
 											[int(self.x-storage.camfocus[0]+(self.w*math.cos(self.angle)-self.h*math.sin(self.angle))),
 											int(self.y+self.z   +self.descend[2]   -self.d-storage.camfocus[1]+(self.w*math.sin(self.angle)+self.h*math.cos(self.angle)))],
 											[int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
-											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]))
+											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))]),width)
+			elif self.image == "Blank":
+				pass
 			elif self.image == None:
 				pygame.draw.polygon(storage.spritecanvas, (255,0,255), ([int(self.x-storage.camfocus[0]+(-self.h*math.sin(self.angle))),
 											int(self.y+self.z   +self.descend[3]   -self.d-storage.camfocus[1]+(self.h*math.cos(self.angle)))],
@@ -1175,9 +1153,180 @@ class plat(collider):
 											int(self.y+(self.z)-storage.camfocus[1]+(self.h*math.cos(self.angle)))]))
 			else:
 				holder = storage.animinfo["TerrainObjs"][self.image]
-				storage.spritecanvas.blit(storage.spritesheet,[self.offset[0]+self.x+self.w/2,self.offset[1]+self.y+self.h/2-self.z-self.d/2],holder[:5])
+				storage.spritecanvas.blit(storage.spritesheet,[self.offset[0]+self.x+self.w/2-storage.camfocus[0],self.offset[1]+self.y+self.h/2-self.z-self.d/2-storage.camfocus[1]],holder[:5])
 
 
+class roundplat(collider):
+	#NOTE: IGNORE OTHER NOTES, THIS DOES NOT WORK YET
+	#NOTE: For complex math reasons, these things must be buried at least 1 unit underground for the player to properly walk onto them. It's an oversight, I know. No, fixing it isn't worth our time right now.
+	#NOTE 2: It works better if they're buried at least 2 units underground.
+	def __init__(self,x=0,y=0,z=0,w=50,h=50,d=50,angle=0,w2=50,h2=50,image = None,offset = [0,0]):
+		super().__init__(x,y,z,w,h,d)
+		self.w2 = w2
+		self.h2 = h2
+		self.angle = angle/180*math.pi
+		self.image = image
+		self.offset = offset
+
+	def todata(self):
+		return ["collider",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.image,self.offset,self.w2,self.h2]]
+
+	def fromdata(self,data):
+		self.x = data[0]
+		self.y = data[1]
+		self.z = data[2]
+		self.w = data[3]
+		self.h = data[4]
+		self.d = data[5]
+		self.speed = copy.deepcopy(data[6])
+		self.grounded = data[7]
+		self.angle = data[8]
+		self.image = data[9]
+		self.offset = data[10]
+		self.w2 = data[11]
+		self.h2 = data[12]
+				
+	def collidepoint(self,basepoint):
+		if len(basepoint) < 3:
+			basepoint.append(0)
+		point = [(basepoint[0]-self.x)*math.cos(-self.angle)-(basepoint[1]-self.y)*math.sin(-self.angle),
+			 (basepoint[0]-self.x)*math.sin(-self.angle)+(basepoint[1]-self.y)*math.cos(-self.angle),basepoint[2]]
+		#first check: vertical
+		if not (self.z >= point[2] >= self.z-self.d):
+			return False
+		else:
+			#print([self.z-point[2],self.z-self.d-point[2]])
+			vertdist = min([self.z-point[2],self.z-self.d-point[2]],key=abs)
+
+			#second check: horrible annoying circle math
+			planeangle = math.atan2(point[1],point[0])
+			#print(180*planeangle/math.pi)
+			pointB1=[self.w/2*math.cos(planeangle),self.h/2*math.sin(planeangle)]
+			pointB2=[self.w/2*math.cos(math.pi+planeangle),self.h/2*math.sin(math.pi+planeangle)]
+			pointT1=[self.w2/2*math.cos(planeangle),self.h2/2*math.sin(planeangle)]
+			pointT2=[self.w2/2*math.cos(math.pi+planeangle),self.h2/2*math.sin(math.pi+planeangle)]
+			#print(pointB1,pointT1,point,180*planeangle/math.pi)
+
+			adjpoint = [point[0]*math.cos(-planeangle)-point[1]*math.sin(-planeangle),point[0]*math.sin(-planeangle)+point[1]*math.cos(-planeangle)]
+			adjB1 = [pointB1[0]*math.cos(-planeangle)-pointB1[1]*math.sin(-planeangle),pointB1[0]*math.sin(-planeangle)+pointB1[1]*math.cos(-planeangle)]
+			adjB2 = [pointB2[0]*math.cos(-planeangle)-pointB2[1]*math.sin(-planeangle),pointB2[0]*math.sin(-planeangle)+pointB2[1]*math.cos(-planeangle)]
+			adjT1 = [pointT1[0]*math.cos(-planeangle)-pointT1[1]*math.sin(-planeangle),pointT1[0]*math.sin(-planeangle)+pointT1[1]*math.cos(-planeangle)]
+			adjT2 = [pointT2[0]*math.cos(-planeangle)-pointT2[1]*math.sin(-planeangle),pointT2[0]*math.sin(-planeangle)+pointT2[1]*math.cos(-planeangle)]
+			lineangle = (math.pi/2)-math.atan2(-self.d,adjB1[0]-adjT1[0])
+			#print(180*lineangle/math.pi)
+			flatpoint = adjpoint[0]*math.cos(lineangle)-(-point[2])*math.sin(lineangle)
+			flatB1 = adjB1[0]*math.cos(lineangle)-(-self.z)*math.sin(lineangle)
+			flatB2 = adjB2[0]*math.cos(lineangle)-(-self.z)*math.sin(lineangle)
+			flatT1 = adjT1[0]*math.cos(lineangle)-(-self.z+self.d)*math.sin(lineangle)
+			flatT2 = adjT2[0]*math.cos(lineangle)-(-self.z+self.d)*math.sin(lineangle)
+			print(flatB1-flatT1)
+			#print(flatpoint,flatB1,flatB2,flatT1,flatT2)
+			mini = min(flatB1,flatB2,flatT1,flatT2)
+			maxi = max(flatB1,flatB2,flatT1,flatT2)
+			#print(mini,flatpoint,maxi)
+			if not (mini <= flatpoint <= maxi):
+				return False
+			else:
+				flatdist = min([mini-flatpoint,maxi-flatpoint],key=abs)
+				#FINALLY, we can return directions based on whichever of these is smaller
+				derotated = [flatdist*math.cos(-lineangle),flatdist*math.sin(-lineangle)]
+				deplaned = [derotated[0]*math.cos(-planeangle),derotated[0]*math.sin(-planeangle),derotated[1]]
+				#print(flatdist,vertdist)
+				if abs(flatdist) <= abs(vertdist):
+					return deplaned
+				else:
+					return [0,0,vertdist]
+				
+
+	def collidecheck(self,hitter):
+		results = self.collidepoint(hitter.bottom)
+		if results != False:
+			hitter.speed[2] = 0
+			hitter.grounded = True
+			#hitter.x+=results[0]
+			#hitter.y+=results[1]
+			hitter.z+=results[2]
+			hitter.getpoints()
+		results = self.collidepoint(hitter.top)
+		if results != False:
+			hitter.speed[2] = 0
+			#hitter.x+=results[0]
+			#hitter.y+=results[1]
+			hitter.z+=results[2]
+			hitter.getpoints()
+		results = self.collidepoint(hitter.right)
+		if results != False:
+			hitter.x+=results[0]
+			#hitter.y+=results[1]
+			#hitter.z+=results[2]
+			hitter.getpoints()
+		results = self.collidepoint(hitter.left)
+		if results != False:
+			hitter.x+=results[0]
+			#hitter.y+=results[1]
+			#hitter.z+=results[2]
+			hitter.getpoints()
+		results = self.collidepoint(hitter.front)
+		if results != False:
+			#hitter.x+=results[0]
+			hitter.y+=results[1]
+			#hitter.z+=results[2]
+			hitter.getpoints()
+		results = self.collidepoint(hitter.back)
+		if results != False:
+			#hitter.x+=results[0]
+			hitter.y+=results[1]
+			#hitter.z+=results[2]
+			hitter.getpoints()
+
+					
+	def interact(self,hitter):
+		pass
+	def update(self):
+		super().update()
+		self.vertsort = [self.y-self.h/2,self.z]
+	def render(self):
+		if storage.debug:
+			if self.image == "Blank":
+				pass
+			else:
+				burner = pygame.Surface((self.w,self.h))
+				burner.set_colorkey((0,255,255))
+				burner.fill((0,255,255))
+				pygame.draw.ellipse(burner,(0,100,0), [0,0,self.w,self.h])
+				burner = pygame.transform.rotate(burner,self.angle*180/math.pi)
+				storage.spritecanvas.blit(burner,[self.x-storage.camfocus[0]-burner.get_size()[0]/2,self.y+self.z-storage.camfocus[1]-burner.get_size()[1]/2])
+				
+				testangle = math.pi/2 - self.angle
+				a = self.w/2
+				m = math.tan(testangle)
+				b = self.h/2
+				x1 = (m*(a**2))/(math.sqrt((a**2)*(m**2)+(b**2)))
+				x2 = -(m*(a**2))/(math.sqrt((a**2)*(m**2)+(b**2)))
+				y1 = -((b**2))/(math.sqrt((a**2)*(m**2)+(b**2)))
+				y2 = ((b**2))/(math.sqrt((a**2)*(m**2)+(b**2)))
+				a = self.w2/2
+				m = math.tan(testangle)
+				b = self.h2/2
+				x3 = (m*(a**2))/(math.sqrt((a**2)*(m**2)+(b**2)))
+				x4 = -(m*(a**2))/(math.sqrt((a**2)*(m**2)+(b**2)))
+				y3 = -((b**2))/(math.sqrt((a**2)*(m**2)+(b**2)))
+				y4 = ((b**2))/(math.sqrt((a**2)*(m**2)+(b**2)))
+				pygame.draw.polygon(storage.spritecanvas,(0,100,0),[[self.x-storage.camfocus[0]+x1*math.cos(self.angle)-y1*math.sin(self.angle),
+											self.y+self.z-storage.camfocus[1]+x2*math.sin(self.angle)+y2*math.cos(self.angle)],
+								      		    [self.x-storage.camfocus[0]+x2*math.cos(self.angle)-y2*math.sin(self.angle),
+											self.y+self.z-storage.camfocus[1]+x1*math.sin(self.angle)+y1*math.cos(self.angle)],
+								      		    [self.x-storage.camfocus[0]+x4*math.cos(self.angle)-y4*math.sin(self.angle),
+											self.y+self.z-storage.camfocus[1]+x3*math.sin(self.angle)+y3*math.cos(self.angle)-self.d],
+								      		    [self.x-storage.camfocus[0]+x3*math.cos(self.angle)-y3*math.sin(self.angle),
+											self.y+self.z-storage.camfocus[1]+x4*math.sin(self.angle)+y4*math.cos(self.angle)-self.d]])
+				
+				burner2 = pygame.Surface((self.w2,self.h2))
+				burner2.set_colorkey((0,255,255))
+				burner2.fill((0,255,255))
+				pygame.draw.ellipse(burner2,(0,255,0), [0,0,self.w2,self.h2])
+				burner2 = pygame.transform.rotate(burner2,self.angle*180/math.pi)
+				storage.spritecanvas.blit(burner2,[self.x-storage.camfocus[0]-burner2.get_size()[0]/2,self.y+self.z-self.d-storage.camfocus[1]-burner2.get_size()[1]/2])
 
 class mapdisplay(sharedlib.gameobject):
 	def __init__(self,path="testmap",x=0,y=0,scale=1):
@@ -1633,6 +1782,9 @@ class cutsceneplayer(sharedlib.gameobject):
 		action = self.blueprint[self.itr]
 		#print(action)
 		match action[0]:
+			case "create":
+				obj = globals()[action[1][0]](*action[1][1])
+				self.itr += 1
 			case "ui":
 				target = self.findui()
 				if not target:
@@ -1687,6 +1839,8 @@ class cutsceneplayer(sharedlib.gameobject):
 			case "loadgame":
 				sharedlib.loadgame(action[1])
 				self.itr += 1
+			case "loadvn":
+				sharedlib.start_cutscene(action[1])
 		if len(self.blueprint) == self.itr:
 			self.delete()
 

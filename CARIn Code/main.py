@@ -56,7 +56,7 @@ storage.objlist = []
 storage.rendered = []
 storage.carryovers = []
 storage.persistobjs = [ ["camera3d",[0,0,0]],["uiobject",[]] ]
-storage.partyspawn = [ ["character",[250,345,-500,50,50,50,3,"CARIn",0]],["character",[250,345,-500,50,50,50,2,None,0]] ]
+storage.partyspawn = [ ["character",[250,350,-500,50,50,50,3,"CARIn",0]] ]#,["character",[250,345,-500,50,50,50,2,None,0]] ]
 storage.enemyspawns = {}
 storage.party = []
 storage.camfocus = [0,0]
@@ -75,7 +75,13 @@ storage.cutscenes = {
 			"WinCARIn0":[["char",["CARIn",0,"setanim","walk315"]]],
 			"test":[["ui",["adddialogue","..."]],["wait","enter"],["ui",["adddialogue","And that was the end of that conversation."]],["wait","enter"],["ui",["loadui","Blank"]],["wait",60],["advancequest","main",1],["char",["CARIn",0,"jump"]]],
 			"test2":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","Would you like to keep having this conversation?"]],["ui",["addchoice",["yes","no"],["test2","test"]]],["wait","enter"],["loadfromui"]],
-			"test3":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","Well that just happened"]],["wait","enter"],["ui",["loadui","Blank"]]]
+			"test3":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","Well that just happened"]],["wait","enter"],["ui",["loadui","Blank"]]],
+			"Intro":[["char",["CARIn",0,"warpto",[200,620,500]]],["wait",120],["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","This is the opening cutscene, where CARIn Arrives on the scene and PLoT tells her to head to Nik's Pools."]],["wait","enter"],["ui",["loadui","Blank"]]],
+			"MeetDiRK":[["char",["CARIn",0,"goto",[720,75]]],["create",["character",[250,345,-500,50,50,50,2,"DiRK",0]]],["char",["DiRK",0,"goto",[720,75]]],["wait",120],["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","This is the cutscene where we are introduced to DiRK, and He joins our party."]],["wait","enter"],["ui",["loadui","Blank"],["advancequest","main",1]]],
+			"MeetOverdrawn":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","This is the Part where CARIn and DiRK find the first of the Overdrawn programs. A battle ensues."]],["wait","enter"],["ui",["loadui","Blank"]]],
+			"GetPasswords":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","This is where DiRK pulls the passwords off the blue tree and encrypts them."]],["wait","enter"],["ui",["loadui","Blank"]]],
+			"FightFox":[["ui",["loadui","Dialogue"]],["ui",["setspeaker","partyleader",0]],["ui",["adddialogue","This is where the heroes find Fox guarding the Red Tree, and he must be fought before they can plant the password. After the fight, They will head to Aiyo's Mount and load the VN Outro."]],["wait","enter"],["ui",["loadui","Blank"]],["loadvn","outro_vn"]]
+
 		}
 storage.combatactions = {
 			"Nothing":[["wait",60]],
@@ -85,7 +91,9 @@ storage.combatactions = {
 			"Runmaster":[["runmaster"]],
 			"SkipTwo":[["skipturn",2]]
 			}
-storage.cutscenes["intro_vn"] = [
+
+#NOTE: These VN cutscenes are stored separately. Even I am not entirely sure why.
+storage.cutscenes["test_vn"] = [
 	["Flyngal","Normal",1,[20,0]],
 	{"speaker": "CARIn", "text": "Welcome to Project CARIn."},
 	["Flyngal","EmoteTest",0,[500,0]],
@@ -93,6 +101,57 @@ storage.cutscenes["intro_vn"] = [
 	{"speaker": "???", "text": "Let’s see how this story unfolds..."},
 	"SiVa1"
 ]
+storage.cutscenes["intro_vn"] = [
+	{"speaker": None, "text": "You are running this game on a computer."},
+	{"speaker": None, "text": "One of the most advanced tools ever made by the hands of man."},
+	{"speaker": None, "text": "Yet a tool and nothing more."},
+	{"speaker": None, "text": "Yet look behind the screen, beneath the plastic and aluminium. Deeper, deep within the gold, copper and silicon..."},
+	{"speaker": None, "text": "Here is a fantastical world, a world where code walks and talks as we do."},
+	{"speaker": None, "text": "In this world, a great tale is about to unfold."},
+	{"speaker": None, "text": "A tale of noble warriors, depraved enemies, and monsterous beasts."},
+	{"speaker": None, "text": "A tale of duty, sacrifice, and destiny."},
+	{"speaker": None, "text": "A tale from which you might learn something..."},
+	{"speaker": None, "text": "...If you'll only listen."},
+	"SiVa1"
+]
+storage.cutscenes["outro_vn"] = [
+	{"speaker": None, "text":">Meanwhile, in the real world...<"},
+	{"speaker": "Locke Enkye", "text":"Hey, Allie!"},
+	{"speaker": "Alicia Flyngal", "text":"Mr. Enkye! How can I help you?"},
+	{"speaker": "Locke Enkye", "text":"Just checking how that password manager I sent down here is doing."},
+	{"speaker": "Alicia Flyngal", "text":"Oh, DiRK? It's doing well. We got the client installed on the IT mainframe with no issues."},
+	{"speaker": "Alicia Flyngal", "text":"All our department's passwords are now encrypted and stored securely. It even gave a report on any weak passwords."},
+	{"speaker": "Locke Enkye", "text":"Do I wanna know how many 'password123's the IT department has?"},
+	{"speaker": "Alicia Flyngal", "text":"More than I'd like...maybe you'll have to run us through some more training."},
+	{"speaker": "Steven Gates", "text":"Hey Mr. E, I've got something for you!"},
+	{"speaker": "Locke Enkye", "text":"What is it, Steve?"},
+	{"speaker": "Steven Gates", "text":"Just got a report back from one of our access programs--we had a security breach!"},
+	{"speaker": "Locke Enkye", "text":"What's the damage?"},
+	{"speaker": "Steven Gates", "text":"Don't worry, we caught it early. Nothing looks amiss so far, but the boys and I are gonna triple-check everything."},
+	{"speaker": "Steven Gates", "text":"The attackers weren't even remote-accessing yet--they had an automated script to scrape higher-privilege passwords."},
+	{"speaker": "Locke Enkye", "text":"Did it get any?"},
+	{"speaker": "Steven Gates", "text":"We can't be sure, but it doesn't look like it."},
+	{"speaker": "Alicia Flyngal", "text":"How did it get in?"},
+	{"speaker": "Steven Gates", "text":"You know Davis in accounting?"},
+	{"speaker": "Alicia Flyngal", "text":"We busted him for having a crummy password not a year ago!"},
+	{"speaker": "Steven Gates", "text":"Well, he's got another one. By the looks of it, it's his wife's maiden name."},
+	{"speaker": "Steven Gates", "text":"His password got cracked, and that's how the attackers got in. We're still figuring what they did to cross from the Accounting systems to IT."},
+	{"speaker": "Locke Enkye", "text":"Keep researching that, and let me know as soon as you figure out the loophole."},
+	{"speaker": "Locke Enkye", "text":"We'll have to get DiRK installed across the whole network. In the meantime, have Davis change his password."},
+	{"speaker": "Locke Enkye", "text":"We better have the admins change theirs as well, just be safe. Oh, and make sure they meet the pending company standard."},
+	{"speaker": "Steven Gates", "text":"The ones you suggested at that meeting, right? 8 plus characters, Uppercase AND lowercase letters, numbers, at least one special character?"},
+	{"speaker": "Alicia Flyngal", "text":"AND nothing that could easily be guessed by knowing things about the user!"},
+	{"speaker": "Steven Gates", "text":"Right, right."},
+	{"speaker": "Locke Enkye", "text":"Lastly, I'd like to see the logs myself."},
+	{"speaker": "Steven Gates", "text":"Right, right. From some program called CARIn, I think."},
+	{"speaker": "Steven Gates", "text":"That's one of yours, right Allie?"},
+	{"speaker": "Alicia Flyngal", "text":"No, you must have the name wrong or something."},
+	{"speaker": "Alicia Flyngal", "text":"I'm still working on CARIn--it won't compile."},
+	{"speaker": "Steven Gates", "text":"Huh, odd. I could've sworn that was it."},
+	{"speaker": None, "text":"..."},
+	{"speaker": None, "text":"The demo is over now. You can leave."}
+]
+
 storage.charmenus = {
 	"Default":{
 		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
@@ -108,11 +167,16 @@ storage.charmenus = {
 #NOTE 2: basestats is character's default stats. This is NEVER to be altered in-game. modstats is for modifications via buffs, level-ups, damage, etc.
 storage.basestats = {
 	"Missingno":[100,0,5,1,2,1,1,1],
-	"CARIn":[100,50,5,3,7,5,4,6]
+	"CARIn":[100,50,5,5,5,5,4,6],
+	"DiRK":[100,100,3,5,2,7,4,4],
+	"Fox":[150,100,4,5,5,8,5,3],
+	"Hacker":[50,10,2,3,3,3,5,2],
+	"Short":[25,0,7,5,2,0,4,4]
 }
 storage.modstats = {
 	"Missingno":[0,0,0,0,0,0,0,0,0,0],
-	"CARIn":[0,0,0,0,0,0,0,0,0,0]
+	"CARIn":[0,0,0,0,0,0,0,0,0,0],
+	"DiRK":[0,0,0,0,0,0,0,0,0,0]
 }
 #NOTE: format for timed effects will be [triggertype,triggermods,function,arguments]
 #NOTE 2: triggertype can be: turnstart or turnend (both time-based), endofcombat, hit, <add more here later IDK>
@@ -136,7 +200,7 @@ storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").conv
 storage.spritesheet.set_colorkey((255,0,255))
 sharedlib.menu_active = False
 #sharedlib.loadmenu("testsub")
-sharedlib.loadgame("MeWo1")
+sharedlib.loadgame("OrWo1")#circtest")
 storage.savestate = gameutils.save()
 storage.runstate = gameutils.save()
 storage.winstate = gameutils.save()
