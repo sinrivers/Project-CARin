@@ -25,6 +25,14 @@ soundutils.startup()
 storage.screensize = [720,480]
 storage.clock = pygame.time.Clock()
 storage.window = pygame.display.set_mode(storage.screensize)
+
+# --- GLOBAL VOLUME (0.0–1.0) ---  # <<< NEW
+storage.volume = 0.5               # <<< NEW
+try:                               # <<< NEW
+	pygame.mixer.music.set_volume(storage.volume)
+except Exception:                  # <<< NEW
+	pass                           # <<< NEW
+
 storage.spritecanvas = pygame.display.set_mode(storage.screensize).convert()
 storage.spritecanvas.set_colorkey((255,0,255))
 storage.uicanvas = pygame.display.set_mode(storage.screensize).convert()
@@ -198,9 +206,11 @@ storage.levels = json.load(open("celllayouts.json"))
 storage.animinfo = json.load(open("animinfo.json"))
 storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
 storage.spritesheet.set_colorkey((255,0,255))
-sharedlib.menu_active = False
-#sharedlib.loadmenu("testsub")
-sharedlib.loadgame("OrWo1")#circtest")
+# Start in menu, not in the game world yet
+sharedlib.menu_active = True
+sharedlib.loadmenu("TitleScreen")
+# Don't load a level until the player presses Start
+# sharedlib.loadgame("OrWo1")
 storage.savestate = gameutils.save()
 storage.runstate = gameutils.save()
 storage.winstate = gameutils.save()

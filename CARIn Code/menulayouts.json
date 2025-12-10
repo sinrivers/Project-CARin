@@ -1,9 +1,23 @@
 {
-  "testmain": [
-    ["menubutton", [260, 200, 200, 80, "loadvn", "intro_vn", "Start"]],
-    ["menubutton", [260, 300, 200, 80, "quit", "", "Exit"]]
+  "TitleScreen": [
+    [
+      "menubutton",
+      [200, 150, 300, 150, "loadmenu", "MainMenu", "Click to Begin"]
+    ]
   ],
-  "testsub": [
-    ["menubutton",[260, 200, 200, 80, "loadmenu", "testmain", "Start"]]
+
+  "MainMenu": [
+    [
+      "menubutton",
+      [200, 80, 300, 150, "loadgame", "OrWo1", "Start"]
+    ],
+    [
+      "menubutton",
+      [200, 180, 300, 150, "openoptions", "", "Options"]
+    ],
+    [
+      "menubutton",
+      [200, 280, 300, 150, "quit", "", "Quit"]
+    ]
   ]
 }
