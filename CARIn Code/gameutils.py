@@ -194,6 +194,7 @@ class character(object3d):
 		else:
 			#print("MAAHHH")
 			#if self.combatactive == True:
+			self.animpicker()
 			if self.combatactions != []:
 				doit = self.combatactions[self.combatactionsindex][0]
 				getattr(self,doit)()
@@ -1859,26 +1860,26 @@ class cutsceneplayer(sharedlib.gameobject):
 				self.itr += 1
 			case "doifprogress":
 				if action[1][1] == storage.missionprogress[action[1][0]]:
-					action = action[1][2]
+					self.blueprint[self.itr] = action[1][2]
 					return
 				self.itr += 1
 			case "doifleader":
 				for member in storage.party:
 					if member.state == 3:
 						if action[1][0] == member.name + str(member.id):
-							action = action[1][1]
+							self.blueprint[self.itr] = action[1][1][0]
 							return
-				if len(action[1]) > 2:
-					action = action[1][2]
+				if len(action[1][1]) > 1:
+					self.blueprint[self.itr] = action[1][1][1]
 					return
 				self.itr += 1
 			case "doifinparty":
 				for member in storage.party:
 					if action[1][0] == member.name + str(member.id):
-						action = action[1][1]
+						self.blueprint[self.itr] = action[1][1][0]
 						return
-				if len(action[1]) > 2:
-					action = action[1][2]
+				if len(action[1][1]) > 1:
+					self.blueprint[self.itr] = action[1][1][1]
 					return
 				self.itr += 1
 			case "loadfromui":

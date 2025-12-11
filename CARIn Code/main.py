@@ -276,7 +276,7 @@ storage.cutscenes = {
 				["wait","enter"],
 				["ui",["loadui","Blank"]],
 				["wait",60],
-				["theyfight","fighttest"],
+				["theyfight","VHacker"],
 				["loadifinparty",["DiRK0","MeetHacker3DiRK"]],
 				["loadcutscene","MeetHacker3"]],
 			"MeetHacker3DiRK":[
@@ -528,7 +528,7 @@ storage.cutscenes = {
 				["wait","enter"],
 				["ui",["loadui","Blank"]],
 				["wait",60],
-				["theyfight","fighttest"],
+				["theyfight","VFox"],
 				["cam",["setfocus","partyleader"]],
 				["wait",60],
 				["char",["Hacker",0,"delete"]],
@@ -670,7 +670,7 @@ storage.cutscenes = {
 				["wait","enter"],
 				["ui",["loadui","Blank"]],
 				["wait",30],
-				["theyfight","fighttest"],
+				["theyfight","VFoxHard"],
 				["char",["Hacker",0,"delete"]],
 				["char",["Hacker",1,"delete"]],
 				["ui",["cutspeaker","Hacker",0]],
@@ -789,18 +789,18 @@ storage.cutscenes = {
 				["ui",["setspeaker","CHAS",0]],
 				["doifleader",["SAM0",[
 					["ui",["adddialogue","SAM, you old halfword! How are you?"]],
-					["ui",["adddialogue","You you doin', kid?"]]
+					["ui",["adddialogue","How you doin', kid?"]]
 				]]],
 				["ui",["setspeaker","CHAS",0]],
 				["ui",["addchoice",["Pretty good.","Been better...","Where can I find the Red and Blue Trees?"],["CHASSmalltalkGood","CHASSmalltalkBad","CHASTrees"]]],
 				["doifleader",["CARIn0",[
-					["ui",["addchoice",["What's your user like, CHAS?"],["CHASUser"]]]
+					["ui",["addchoice",["Pretty good.","Been better...","Where can I find the Red and Blue Trees?","What's your user like, CHAS?"],["CHASSmalltalkGood","CHASSmalltalkBad","CHASTrees","CHASUser"]]]
 				]]],
 				["doifleader",["DiRK0",[
-					["ui",["addchoice",["What's your function?"],["CHASFunction"]]]
+					["ui",["addchoice",["Pretty good.","Been better...","Where can I find the Red and Blue Trees?","What's your function?"],["CHASSmalltalkGood","CHASSmalltalkBad","CHASTrees","CHASFunction"]]]
 				]]],
 				["wait","enter"],
-				["ui",["loadui","Blank"]]],
+				["loadfromui"]],
 			"CHASFunction":[
 				["ui",["setspeaker","CHAS",0]],
 				["ui",["adddialogue","I know stuff, as much as I can. It helps Users and programs accomplish tasks on the system."]],
@@ -1001,6 +1001,13 @@ storage.combatactions = {
 			"staffattack":[["wait",1],["picktargethostile"],["gototarget"],["staffattack"],["wait",60]],
 			"PsychUp":[["checkavailabledata",10],["alterstat","spentdata",10],["alterstat","write",10],["addtimedfx","turnend",120,"alterstat",["write",-10]],["wait",60]],
 			"Runmaster":[["runmaster"]],
+			"Restore":[["alterstat","spentdata",10],["alterstat","damage",-10],["wait",60]],
+			"Request Memory":[["alterstat","spentdata",-10],["wait",60]],
+			"Focus":[["alterstat","spentdata",10],["alterstat","read",10],["addtimedfx","turnend",120,"alterstat",["read",-10]],["wait",60]],
+			"Amp Up":[["alterstat","spentdata",10],["alterstat","write",10],["addtimedfx","turnend",120,"alterstat",["write",-10]],["wait",60]],
+			"Preprocess":[["alterstat","spentdata",10],["alterstat","execute",10],["addtimedfx","turnend",120,"alterstat",["execute",-10]],["wait",60]],
+			"Cloak Process":[["alterstat","spentdata",10],["alterstat","obfuscation",10],["addtimedfx","turnend",120,"alterstat",["obfuscation",-10]],["wait",60]],
+			"Encrypt":[["alterstat","spentdata",10],["alterstat","persistence",10],["addtimedfx","turnend",120,"alterstat",["persistence",-10]],["wait",60]],
 			"SkipTwo":[["skipturn",2]]
 			}
 
@@ -1077,12 +1084,17 @@ storage.colors = {
 storage.charmenus = {
 	"Default":{
 		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
-		"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
+		"mainnodrun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
 		"subroutines":[["Back"],[["menu","main"]]]},
 	"CARIn":{
 		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
 		"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
-		"subroutines":[["Back","Psych Up","Skip your next two turns, for some reason"],[["menu","main"],"PsychUp","SkipTwo"]]}
+		"subroutines":[["Back","Restore (+10 HP)","Focus (+10 READ)","Amp Up (+10 WRITE)","Skip your next two turns, for some reason"],[["menu","main"],"Restore","Focus","Amp Up","SkipTwo"]]},
+	"DiRK":{
+		"main":[["Fight","Subroutines","Pass","Run"],["staffattack",["menu","subroutines"],"Nothing","Runmaster"]],
+		"mainnorun":[["Fight","Subroutines","Pass"],["staffattack",["menu","subroutines"],"Nothing"]],
+		"subroutines":[["Back","Encrypt (+10 PERSISTENCE)","Request Memory (+10 DATA)","Skip your next two turns, for some reason"],[["menu","main"],"Encrypt","Request Memory","SkipTwo"]]}
+
 
 }
 #NOTE: Stats are ordered thus: Max HP, Max DATA, Priority, Read, Write, Execute, Obfuscation, Persistance. modstats has extra slots at the end for damage and spent data.
@@ -1121,8 +1133,8 @@ storage.animinfo = json.load(open("animinfo.json"))
 storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
 storage.spritesheet.set_colorkey((255,0,255))
 sharedlib.menu_active = False
-sharedlib.loadmenu("testsub")
-#sharedlib.loadgame("OrWo1")#circtest")
+#sharedlib.loadmenu("testsub")
+sharedlib.loadgame("NiPo1")#circtest")
 storage.savestate = gameutils.save()
 storage.runstate = gameutils.save()
 storage.winstate = gameutils.save()

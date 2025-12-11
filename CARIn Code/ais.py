@@ -12,6 +12,10 @@ import copy
 
 def MissingnoCombat(agent):
 	agent.combatactions = copy.deepcopy(storage.combatactions[random.choice(["staffattack"])])
+def HackerCombat(agent):
+	agent.combatactions = copy.deepcopy(storage.combatactions[random.choice(["staffattack"])])
+def FoxCombat(agent):
+	agent.combatactions = copy.deepcopy(storage.combatactions[random.choice(["Restore","Focus","Amp Up","staffattack"])])
 def MissingnoInteract(agent):
 	sharedlib.cutscenestart("test2")
 def MissingnoIdle(agent):
