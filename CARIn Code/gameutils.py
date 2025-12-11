@@ -110,8 +110,6 @@ class character(object3d):
 		self.animpriority = False
 
 		self.grounded = True
-		self.walkspeed = self.getstat("priority")
-		self.jumpspeed = 5 * self.getstat("priority")
 		if self.name == None or not hasattr(ais,self.name+"Combat"):
 			self.combatAI = getattr(ais, "MissingnoCombat")
 		else:
@@ -152,8 +150,6 @@ class character(object3d):
 		self.animname = "stand0"
 		self.animpriority = False
 		self.pullglobalstats()
-		self.walkspeed = self.getstat("priority")
-		self.jumpspeed = 5 * self.getstat("priority")
 		if self.name == None or not hasattr(ais,self.name+"Combat"):
 			self.combatAI = getattr(ais, "MissingnoCombat")
 		else:
@@ -163,12 +159,13 @@ class character(object3d):
 		if self.state == 3:
 			storage.camera.target = self
 	def interact(self,hitter):
-		if self.name == None:
-			getattr(ais, "MissingnoInteract")(self)
-		elif not hasattr(ais,self.name+str(self.id)+"Interact"):
-			getattr(ais, self.name+"Interact")(self)
+		if self.name == None or (not hasattr(ais,self.name+"Interact") and not hasattr(ais,self.name+str(self.id)+"Interact")):
+			name = "Missingno"
+		elif not hasattr(ais, self.name+str(self.id)+"Interact"):
+			name = self.name
 		else:
-			getattr(ais, self.name+str(self.id)+"Interact")(self)
+			name = self.name + str(self.id)
+		getattr(ais, name+"Interact")(self)
 	def update(self):
 		super().update()
 		if self.iframes > 0:
@@ -177,6 +174,7 @@ class character(object3d):
 			self.setstat("damage",self.getstat("maxhp")-1)
 		#process whatever actions needed for this character
 		if storage.actlock == False:
+			self.combatactions = []
 			for item in self.timedfx:
 				if item[0] in ["turnstart","turnend","time"]:
 					item[1] -= 1
@@ -194,17 +192,19 @@ class character(object3d):
 					self.controlupdates()
 			self.animpicker()
 		else:
-			if self.combatactive == True:
-				if self.combatactions != []:
-					doit = self.combatactions[self.combatactionsindex][0]
-					getattr(self,doit)()
-				#NOTE: It is stupid that this second check has to be here, but it does. Otherwise, we can't back out of target selection and stuff like that. Can somebody propose a better solution? Who am I kidding, nobody else reads these comments...
-				if self.combatactions != []:
-					if self.combatactionsindex == len(self.combatactions):
-						self.combatactive = False
-						self.combattarget = []
-						self.combatactions = []
-						self.combatactionsindex = 0
+			#print("MAAHHH")
+			#if self.combatactive == True:
+			if self.combatactions != []:
+				doit = self.combatactions[self.combatactionsindex][0]
+				getattr(self,doit)()
+
+			#NOTE: It is stupid that this second check has to be here, but it does. Otherwise, we can't back out of target selection and stuff like that. Can somebody propose a better solution? Who am I kidding, nobody else reads these comments...
+			if self.combatactions != []:
+				if self.combatactionsindex == len(self.combatactions):
+					self.combatactive = False
+					self.combattarget = []
+					self.combatactions = []
+					self.combatactionsindex = 0
 		#natural decrease of speed
 		self.physics()
 		#update locations based on speed
@@ -220,12 +220,14 @@ class character(object3d):
 		self.physics()
 
 	def getstat(self,stat):
+		mult = 1
 		if stat == "maxhp":
 			index = 0
 		elif stat == "maxdata":
 			index = 1
 		elif stat == "priority":
 			index = 2
+			mult = 1.25
 		elif stat == "read":
 			index = 3
 		elif stat == "write":
@@ -240,7 +242,7 @@ class character(object3d):
 			return self.modstats[8]
 		elif stat == "spentdata":
 			return self.modstats[9]
-		return self.basestats[index] + self.modstats[index]
+		return (self.basestats[index] + self.modstats[index])*mult
 
 	def alterstat(self,stat = None,amt = None):
 		if stat == None:
@@ -276,7 +278,7 @@ class character(object3d):
 			self.basestats = copy.deepcopy(storage.basestats["Missingno"])
 		else:
 			self.basestats = copy.deepcopy(storage.basestats[self.name])
-		if self.name not in storage.modstats.keys():
+		if self.name in storage.modstats.keys():
 			self.modstats = copy.deepcopy(storage.modstats[self.name])
 		else:
 			self.modstats = copy.deepcopy(storage.modstats["Missingno"])
@@ -339,20 +341,20 @@ class character(object3d):
 
 	def animpicker(self):
 		#pick an animation
-		roundedangle = 45*round(self.angle/45)
-		if self.speed[0] > 0 or self.speed[1] > 0:
-			self.setanim("walk",str(self.angle))
+		roundedangle = (45*round(self.angle/45))%360
+		if abs(self.speed[0]) > 0 or abs(self.speed[1] > 0):
+			self.setanim("walk",str(roundedangle))
 		else:
-			self.setanim("stand",str(self.angle))
+			self.setanim("stand",str(roundedangle))
 		if self.speed[2] < 0:
-			self.setanim("airup",str(self.angle))
+			self.setanim("airup",str(roundedangle))
 		elif self.speed[2] > 0:
-			self.setanim("airdown",str(self.angle))
+			self.setanim("airdown",str(roundedangle))
 			
 	def animupdate(self):
 		self.framecounter += storage.deltatime
 		#NOTE: This is butt-covering. It's here to prevent an animation change from crashing if angled animations have divers frame counts (which should be avoided, but just in case).
-		if len(storage.animinfo[self.name]["anims"][self.animname]) < self.framenumber:
+		if len(storage.animinfo[self.name]["anims"][self.animname]) <= self.framenumber:
 			self.framenumber = 0
 			self.framecounter = 0
 		if storage.animinfo[self.name]["anims"][self.animname][self.framenumber][1] < self.framecounter:
@@ -365,7 +367,7 @@ class character(object3d):
 						self.animname = self.queuedanim
 
 	def render(self):
-		if self.name == None:
+		if self.name == None or self.name not in storage.animinfo.keys(): 
 			if self.state == 3:
 				pygame.draw.rect(storage.spritecanvas, (0,0,100), (int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h),2)
 				pygame.draw.rect(storage.spritecanvas, (0,0,155), (int(self.x-storage.camfocus[0]),int(self.y+self.z-self.d-storage.camfocus[1]),self.w,self.h+self.d))
@@ -415,7 +417,7 @@ class character(object3d):
 
 	def jump(self):
 		self.grounded = False
-		self.speed[2] = -self.jumpspeed
+		self.speed[2] = -self.getstat("priority")*3
 		soundutils.playsound()
 
 	def physics(self):
@@ -453,8 +455,8 @@ class character(object3d):
 					self.angle = math.atan2(self.y-charac.y,self.x-charac.x)*180/math.pi
 					if self.z > charac.z and self.grounded == True:
 						self.jump()
-					self.speed[0] = -self.walkspeed*math.cos(self.angle/180*math.pi)
-					self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+					self.speed[0] = -charac.getstat("priority")*math.cos(self.angle/180*math.pi)
+					self.speed[1] = -charac.getstat("priority")*math.sin(self.angle/180*math.pi)
 	def NPCupdates(self):
 		if self.name == None:
 			getattr(ais, "MissingnoIdle")(self)
@@ -470,12 +472,11 @@ class character(object3d):
 					dist = (charac.x-self.x)**2+(charac.y-self.y)**2+(charac.z-self.z)**2
 					if dist < 100000:
 						self.angle = math.atan2(self.y-charac.y,self.x-charac.x)*180/math.pi
-						self.speed[0] = -self.walkspeed*math.cos(self.angle/180*math.pi)
-						self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+						self.speed[0] = -self.getstat("priority")*math.cos(self.angle/180*math.pi)
+						self.speed[1] = -self.getstat("priority")*math.sin(self.angle/180*math.pi)
 					
 	def controlupdates(self):
 		#get control updates
-		#NOTE: This method for determining angles is inherently flawed, and as a result you will almost never see the non-cardinal idle sprites. Maybe fix later?
 		angleamt = [0,0]
 		walk = False
 		if storage.keys[pygame.K_a] or storage.dpad[0]:
@@ -525,9 +526,10 @@ class character(object3d):
 			load(storage.savestate)
 		if pygame.K_LSHIFT in storage.newkeys:
 			cutsceneplayer("Pause")
+		#TODO: add character swapping
 		if walk:
-			self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
-			self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+			self.speed[0] = self.getstat("priority")*math.cos(self.angle/180*math.pi)
+			self.speed[1] = -self.getstat("priority")*math.sin(self.angle/180*math.pi)
 	
 			self.interactpoint = [self.center[0]+(self.interactd)*math.cos(self.angle/180*math.pi),
 				      self.center[1]-(self.interactd)*math.sin(self.angle/180*math.pi),
@@ -563,104 +565,62 @@ class character(object3d):
 		self.combatactionsindex += 1
 	
 
-	def gotocutscenewait(self,pos = None):
+	def gotocutscenewait(self,pos = None,distance = 0):
 		if pos == None:
 			#print("WHY AM I REACHING YOU AT THE COORDINATES OF THE ABANDONED SPACE STATION")
 			pos = self.combatactions[self.combatactionsindex][1]
 		if [self.x,self.y] == [pos[0],pos[1]]:
 			self.combatactionsindex += 1
 		else:
-			if (self.x-pos[0])**2 + (self.y-pos[1])**2 < self.walkspeed**2:
-				self.x = pos[0]
-				self.y = pos[1]
+			self.turnto(pos)
+			if (self.x-pos[0])**2 + (self.y-pos[1])**2 < (self.getstat("priority")+distance)**2:
+				self.x = pos[0]-distance*math.cos(-self.angle/180*math.pi)
+				self.y = pos[1]-distance*math.sin(-self.angle/180*math.pi)
 				self.speed = [0,0,0]
 				self.combatactionsindex += 1
 			else:
-				angleamt = [0,0]
-				if pos[0] < self.x:
-					angleamt[0] = -1
-				elif pos[0] > self.x:
-					angleamt[0] = 1
-				if pos[1] < self.y:
-					angleamt[1] = -1
-				elif pos[1] > self.y:
-					angleamt[1] = 1
-		
-				if angleamt[0] == 0:
-					if angleamt[1] == 0:
-						pass
-					elif angleamt[1] > 0:
-						self.angle = 270
-					else:
-						self.angle = 90
-				elif angleamt[0] > 0:
-					if angleamt[1] == 0:
-						self.angle = 0
-					elif angleamt[1] > 0:
-						self.angle = 315
-					else:
-						self.angle = 45
-				else:
-					if angleamt[1] == 0:
-						self.angle = 180
-					elif angleamt[1] > 0:
-						self.angle = 225
-					else:
-						self.angle = 135
-				self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
-				self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+				for item in storage.objlist:
+					if isinstance(item,plat):
+						if item.collidepoint([self.x,self.y,self.z]) or item.collidepoint([self.x+self.w,self.y,self.z]) or item.collidepoint([self.x+self.w,self.y+self.h,self.z]) or item.collidepoint([self.x,self.y+self.h,self.z]):
+							self.angle -= 90
+				self.speed[0] = self.getstat("priority")*math.cos(self.angle/180*math.pi)
+				self.speed[1] = -self.getstat("priority")*math.sin(self.angle/180*math.pi)
 				self.animpicker()
 				return False
 
-	def goto(self,pos = None):
+	def goto(self,pos = None,distance = 0):
 		if pos == None:
 			#print("WHY AM I REACHING YOU AT THE COORDINATES OF THE ABANDONED SPACE STATION")
 			pos = self.combatactions[self.combatactionsindex][1]
+			print(pos)
+		else:
+			self.combatactions = [["goto",pos]]
+			self.combatactionsindex = 0
 		if [self.x,self.y] == [pos[0],pos[1]]:
 			self.combatactionsindex += 1
 		else:
-			if (self.x-pos[0])**2 + (self.y-pos[1])**2 < self.walkspeed**2:
-				self.x = pos[0]
-				self.y = pos[1]
+			self.turnto(pos)
+			if (self.x-pos[0])**2 + (self.y-pos[1])**2 < (self.getstat("priority")+distance)**2:
+				self.x = pos[0]-distance*math.cos(-self.angle/180*math.pi)
+				self.y = pos[1]-distance*math.sin(-self.angle/180*math.pi)
 				self.speed = [0,0,0]
 				self.combatactionsindex += 1
 			else:
-				angleamt = [0,0]
-				if pos[0] < self.x:
-					angleamt[0] = -1
-				elif pos[0] > self.x:
-					angleamt[0] = 1
-				if pos[1] < self.y:
-					angleamt[1] = -1
-				elif pos[1] > self.y:
-					angleamt[1] = 1
-		
-				if angleamt[0] == 0:
-					if angleamt[1] == 0:
-						pass
-					elif angleamt[1] > 0:
-						self.angle = 270
-					else:
-						self.angle = 90
-				elif angleamt[0] > 0:
-					if angleamt[1] == 0:
-						self.angle = 0
-					elif angleamt[1] > 0:
-						self.angle = 315
-					else:
-						self.angle = 45
-				else:
-					if angleamt[1] == 0:
-						self.angle = 180
-					elif angleamt[1] > 0:
-						self.angle = 225
-					else:
-						self.angle = 135
-				self.speed[0] = self.walkspeed*math.cos(self.angle/180*math.pi)
-				self.speed[1] = -self.walkspeed*math.sin(self.angle/180*math.pi)
+				for item in storage.objlist:
+					if isinstance(item,plat):
+						if item.collidepoint([self.x,self.y,self.z]) or item.collidepoint([self.x+self.w,self.y,self.z]) or item.collidepoint([self.x+self.w,self.y+self.h,self.z]) or item.collidepoint([self.x,self.y+self.h,self.z]):
+							self.angle -= 90
+				self.speed[0] = self.getstat("priority")*math.cos(self.angle/180*math.pi)
+				self.speed[1] = -self.getstat("priority")*math.sin(self.angle/180*math.pi)
 				self.animpicker()
 
-
+	def turnto(self,point = None):
+		if point == None:
+			self.angle = 270
+		else:
+			self.angle = (180+180*math.atan2(point[1]-self.y,self.x-point[0])/math.pi)%360
+			if self.angle < 0:
+				self.angle = 360 + self.angle
 	def warpto(self,point = None):
 		#print("THAT ISN'T EVEN A REAL WORD")
 		if point == None:
@@ -678,45 +638,15 @@ class character(object3d):
 		if [self.x,self.y] == [pos[0],pos[1]]:
 			self.combatactionsindex += 1
 		else:
-			if (self.x-pos[0])**2 + (self.y-pos[1])**2 < self.walkspeed**2:
+			if (self.x-pos[0])**2 + (self.y-pos[1])**2 < self.getstat("priority")**2:
 				self.x = pos[0]
 				self.y = pos[1]
 				self.speed = [0,0,0]
 				self.combatactionsindex += 1
 			else:
-				angleamt = [0,0]
-				if pos[0] < self.x:
-					angleamt[0] = -1
-				elif pos[0] > self.x:
-					angleamt[0] = 1
-				if pos[1] < self.y:
-					angleamt[1] = -1
-				elif pos[1] > self.y:
-					angleamt[1] = 1
-		
-				if angleamt[0] == 0:
-					if angleamt[1] == 0:
-						pass
-					elif angleamt[1] > 0:
-						self.angle = 270
-					else:
-						self.angle = 90
-				elif angleamt[0] > 0:
-					if angleamt[1] == 0:
-						self.angle = 0
-					elif angleamt[1] > 0:
-						self.angle = 315
-					else:
-						self.angle = 45
-				else:
-					if angleamt[1] == 0:
-						self.angle = 180
-					elif angleamt[1] > 0:
-						self.angle = 225
-					else:
-						self.angle = 135
-				self.speed[0] = 2*self.walkspeed*math.cos(self.angle/180*math.pi)
-				self.speed[1] = -2*self.walkspeed*math.sin(self.angle/180*math.pi)
+				self.turnto(pos)
+				self.speed[0] = 2*self.getstat("priority")*math.cos(self.angle/180*math.pi)
+				self.speed[1] = -2*self.getstat("priority")*math.sin(self.angle/180*math.pi)
 
 	def wait(self):
 		self.combatactions[self.combatactionsindex][1] -= storage.deltatime
@@ -798,6 +728,10 @@ class character(object3d):
 		self.combatactive = False
 	def testme(self):
 		print("Well that just happened")
+	def joinparty(self):
+		self.state = 2
+		storage.party.append(self)
+		storage.partyspawn.append(["character",[250,350,-500,self.w,self.h,self.d,self.state,self.name,self.id]])
 	
 
 class collider(object3d):
@@ -925,7 +859,7 @@ class cutscenetrigger(collider):
 		self.script = script
 		self.once = once
 	def todata(self):
-		return ["musiczone",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend,self.script,self.once]]
+		return ["cutscenetrigger",[self.x,self.y,self.z,self.w,self.h,self.d,self.speed,self.grounded,self.angle,self.descend,self.script,self.once]]
 	def fromdata(self,data):
 		self.x = data[0]
 		self.y = data[1]
@@ -940,10 +874,11 @@ class cutscenetrigger(collider):
 		self.script = data[10]
 		self.once = data[11]
 	def collidecheck(self,hitter):
-		if storage.actlock == False and hitter.state == 3:
+		print(self.x,self.y,self.z)
+		if storage.actlock == False and hitter.state == 3  and (self.collidepoint(hitter.center)!=False):
 			if self.once:
 				self.delete()
-				cutsceneplayer(self.script)	
+			cutsceneplayer(self.script)	
 class musiczone(collider):
 	def __init__(self,x=0,y=0,z=0,w=0,h=0,d=0,angle = 0,descend = [0,0,0,0],song = "bosstest.mp3"):
 		super().__init__(x,y,z,w,h,d,angle,descend)
@@ -963,7 +898,7 @@ class musiczone(collider):
 		self.descend = data[9]
 		self.song = data[10]
 	def collidecheck(self,hitter):
-		if storage.actlock == False and hitter.state == 3:
+		if storage.actlock == False and hitter.state == 3 and (self.collidepoint(hitter.center)!=False):
 			soundutils.playsong(self.song)
 			storage.songpriority = True
 	def delete(self):
@@ -1037,10 +972,10 @@ class warpzone(collider):
 					#then they should warp to a set point
 					base.append(["char",[char.name,char.id,"warpto",self.warploc]])
 					#then they should walk to ANOTHER point.
-					if char.state == 3:
-						base += [["char",[char.name,char.id,"gotocutscenewait",self.inloc]]]
+					if char.state != 3:
+						base += [["char",[char.name,char.id,"goto",self.inloc]]]
 					else:
-						after.append(["char",[char.name,char.id,"goto",self.inloc]])
+						after.append(["char",[char.name,char.id,"gotocutscenewait",self.inloc]])
 				base = before + base + after
 				print(base)
 				cutsceneplayer(base)
@@ -1335,10 +1270,11 @@ class mapdisplay(sharedlib.gameobject):
 		self.y = y
 		self.image = pygame.transform.scale_by(pygame.image.load(f"Assets/graphics/{path}.png").convert(),scale)
 		self.path = path
+		self.scale = scale
 		self.w,self.h = self.image.get_size()
 
 	def todata(self):
-		return ["mapdisplay",[self.x,self.y,self.w,self.h,self.path]]
+		return ["mapdisplay",[self.x,self.y,self.w,self.h,self.path,self.scale]]
 
 	def fromdata(self,data):
 		self.x = data[0]
@@ -1346,7 +1282,8 @@ class mapdisplay(sharedlib.gameobject):
 		self.w = data[2]
 		self.h = data[3]
 		self.path = data[4]
-		self.image = pygame.transform.scale_by(pygame.image.load(f"Assets/graphics/self.{path}.png").convert(),scale)
+		self.scale = data[5]
+		self.image = pygame.transform.scale_by(pygame.image.load(f"Assets/graphics/{self.path}.png").convert(),self.scale)
 
 	def update(self):
 		super().update()
@@ -1377,6 +1314,26 @@ class camera3d(sharedlib.gameobject):
 
 	def render(self):
 		pass
+	
+	def setfocus(self,target=None):
+		if target == None:
+			self.target = self
+		elif target == "partyleader":
+			for item in storage.party:
+				if item.state == 3:
+					self.target = item
+					break
+		else:
+			for item in storage.objlist:
+				if isinstance(item,character):
+					if item.name + str(item.id) == target:
+						self.target = item
+						break
+
+	def moveto(self,pos = [0,0,0]):
+		self.x = pos[0]
+		self.y = pos[1]
+		self.z = pos[2]
 
 	def update(self):
 		super().update()
@@ -1424,6 +1381,7 @@ class uiobject(sharedlib.gameobject):
 		#Eventually, I'd like the option to scroll thru a record of past dialogue, either via dialogue windows or a written record.
 		#See Star Wars: KOTOR for an example of this in action.
 		#now, the dialogue trailing off the top...Yeah, that needs fixed.
+		self.color = [255,255,0]
 		self.diamessages = []
 		self.choices = []
 		self.outcomes = []
@@ -1432,10 +1390,11 @@ class uiobject(sharedlib.gameobject):
 		self.dictoffset = 0
 		self.submenu = "main"
 		self.combattant = None
+		self.focusspeaker = 0
 		storage.ui = self
 
 	def todata(self):
-		return ["uiobject",[self.mode,copy.deepcopy(self.diachars),copy.deepcopy(self.diamessages),copy.deepcopy(self.choices),copy.deepcopy(self.outcomes),self.active]]
+		return ["uiobject",[self.mode,copy.deepcopy(self.diachars),copy.deepcopy(self.diamessages),copy.deepcopy(self.choices),copy.deepcopy(self.outcomes),self.active,self.focusspeaker]]
 
 	def fromdata(self,data):
 		self.mode = data[0]
@@ -1446,6 +1405,7 @@ class uiobject(sharedlib.gameobject):
 		self.combattant = None
 		self.submenu = "main"
 		self.active = data[5]
+		self.focusspeaker = data[6]
 		storage.ui = self
 
 	def update(self):
@@ -1551,19 +1511,45 @@ class uiobject(sharedlib.gameobject):
 	
 	def setcombattant(self,combattant):
 		self.combattant = combattant
+		if combattant.name == None or combattant.name + str(combattant.id) not in storage.colors.keys():
+			if combattant.name not in storage.colors.keys():
+				self.color = storage.colors["Default"]
+			else:
+				self.color = storage.colors[combattant.name]
+		else:
+			self.color = storage.colors[combattant.name+str(combttant.id)]
 
-	def setspeaker(self,name,side = 0,emote="Neutral"):
-		
+	def cutspeaker(self,name,id = 0):
+		for item in self.diachars:
+			if item[0] == name and item[3] == id:
+				self.diachars.remove(item)
+				break
+
+	def setspeaker(self,name,side = 0,id = 0,emote="Neutral"):
+		found = False
 		if name == "partyleader":
 			for item in storage.party:
 				if item.state == 3:
 					name = item.name
 					break
-		for item in self.diachars:
-			if name == item[0]:
+		for index in range(len(self.diachars)):
+			item = self.diachars[index]
+			if name == item[0] and id == item[3]:
 				item[1] = emote
-				return
-		self.diachars.append([name,emote,side])
+				self.focusspeaker = index
+				found = True
+				break
+		if not found:
+			self.diachars.append([name,emote,side,id])
+			self.focusspeaker = len(self.diachars)-1
+
+		if name + str(id) not in storage.colors.keys():
+			if name not in storage.colors.keys():
+				self.color = storage.colors["Default"]
+			else:
+				self.color = storage.colors[name]
+		else:
+			self.color = storage.colors[name+str(id)]
 
 	def loadui(self,name):
 		if name != "Dialogue" and self.mode == "Dialogue":
@@ -1582,11 +1568,11 @@ class uiobject(sharedlib.gameobject):
 			storage.uicanvas.blit(storage.writer.render("THIS SCREEN CONTAINS WIN",False,(255,255,255)),(0,0))#(self.x,self.y))
 		elif self.mode == "Dictionary":
 			if self.dictmode == 0:
-				storage.uicanvas.blit(storage.writer.render("Story Dictionary",False,(255,255,0)),(50,20))
-				pygame.draw.rect(storage.uicanvas,(127,127,0),[40,40,200,400])
-				pygame.draw.rect(storage.uicanvas,(127,127,0),[240,40,440,400])
-				pygame.draw.rect(storage.uicanvas,(255,255,0),[40,40,200,400],5)
-				pygame.draw.rect(storage.uicanvas,(255,255,0),[240,40,440,400],5)
+				storage.uicanvas.blit(storage.writer.render("Story Dictionary",False,self.color),(50,20))
+				pygame.draw.rect(storage.uicanvas,(self.color[0]*0.5,self.color[1]*0.5,self.color[2]*0.5),[40,40,200,400])
+				pygame.draw.rect(storage.uicanvas,(self.color[0]*0.5,self.color[1]*0.5,self.color[2]*0.5),[240,40,440,400])
+				pygame.draw.rect(storage.uicanvas,self.color,[40,40,200,400],5)
+				pygame.draw.rect(storage.uicanvas,self.color,[240,40,440,400],5)
 				itr = 0
 				for item in storage.storydict.keys():
 					if itr == self.active:
@@ -1597,7 +1583,7 @@ class uiobject(sharedlib.gameobject):
 							storage.uicanvas.blit(storage.writer.render(line,False,(255,255,255)),(250,50+linecounter*10))
 							linecounter += 1
 					else:
-						storage.uicanvas.blit(storage.writer.render(item,False,(255,255,0)),(50,50+itr*20+self.dictoffset))
+						storage.uicanvas.blit(storage.writer.render(item,False,self.color),(50,50+itr*20+self.dictoffset))
 					itr += 1
 			else:
 				storage.uicanvas.blit(storage.writer.render("Cybersecurity Dictionary",False,(255,255,255)),(50,20))
@@ -1621,8 +1607,8 @@ class uiobject(sharedlib.gameobject):
 		elif self.mode == "Combat":
 			size = 0
 			if self.combattant.combatactions == []:
-				pygame.draw.rect(storage.uicanvas,(127,127,0),[160,40,400,400])
-				pygame.draw.rect(storage.uicanvas,(255,255,0),[160,40,400,400],5)
+				pygame.draw.rect(storage.uicanvas,(self.color[0]*0.5,self.color[1]*0.5,self.color[2]*0.5),[160,40,400,400])
+				pygame.draw.rect(storage.uicanvas,self.color,[160,40,400,400],5)
 				storage.uicanvas.blit(storage.writer.render(f"{self.combattant.name}:{self.combattant.getstat("maxhp")-self.combattant.getstat("damage")}/{self.combattant.getstat("maxhp")}HP {self.combattant.getstat("maxdata")-self.combattant.getstat("spentdata")}/{self.combattant.getstat("maxdata")}DATA ",False,(255,255,255)),[165,45])
 				size += storage.writer.size(f"it is {self.combattant.name}'s turn.")[1]
 				for index in range(len(self.choices)):
@@ -1630,12 +1616,12 @@ class uiobject(sharedlib.gameobject):
 					if self.active == index:
 						storage.uicanvas.blit(storage.writer.render(">"+self.choices[index],False,(255,255,255)),[165,45+size])
 					else:
-						storage.uicanvas.blit(storage.writer.render(self.choices[index],False,(255,255,0)),[165,45+size])
+						storage.uicanvas.blit(storage.writer.render(self.choices[index],False,self.color),[165,45+size])
 					size += storage.writer.size(self.choices[index])[1]
 
 		elif self.mode == "Dialogue":
-			pygame.draw.rect(storage.uicanvas,(127,127,0),[160,40,400,400])
-			pygame.draw.rect(storage.uicanvas,(255,255,0),[160,40,400,400],5)
+			pygame.draw.rect(storage.uicanvas,(self.color[0]*0.5,self.color[1]*0.5,self.color[2]*0.5),[160,40,400,400])
+			pygame.draw.rect(storage.uicanvas,self.color,[160,40,400,400],5)
 			itrL = 0
 			itrR = 0
 			numL = 0
@@ -1647,7 +1633,8 @@ class uiobject(sharedlib.gameobject):
 				Lspacing = storage.screensize[1]/numL
 			if numR > 0:
 				Rspacing = storage.screensize[1]/numR
-			for item in self.diachars:
+			for index in range(len(self.diachars)):
+				item = self.diachars[index]
 				if item[2] == 0:
 					x = 110
 					y = Lspacing * itrL + Lspacing/2
@@ -1656,13 +1643,27 @@ class uiobject(sharedlib.gameobject):
 					x = 570
 					y = Rspacing * itrR + Rspacing/2
 					itrR += 1
-				pygame.draw.rect(storage.uicanvas,(127,127,0),[x-5,y-5,50,50])
-				pygame.draw.rect(storage.uicanvas,(255,255,0),[x-5,y-5,50,50],5)
-				storage.uicanvas.blit(storage.spritesheet, [x,y],storage.animinfo["Portraits"][item[0]+item[1]])
+				if index == self.focusspeaker:
+					pygame.draw.rect(storage.uicanvas,(self.color[0]*0.5,self.color[1]*0.5,self.color[2]*0.5),[x-5,y-5,50,50])
+					pygame.draw.rect(storage.uicanvas,self.color,[x-5,y-5,50,50],5)
+				else:
+					color = [0,0,0]
+					if item[0] + str(item[3]) not in storage.colors.keys():
+						if item[0] not in storage.colors.keys():
+							color = storage.colors["Default"]
+						else:
+							color = storage.colors[item[0]]
+					else:
+						color = storage.colors[item[0]+str(item[3])]
+					pygame.draw.rect(storage.uicanvas,[0,0,0],[x-5,y-5,50,50])
+					pygame.draw.rect(storage.uicanvas,(color[0]*0.5,color[1]*0.5,color[2]*0.5),[x-5,y-5,50,50],5)
+				
+				if item[0] in storage.animinfo["Portraits"].keys():
+					storage.uicanvas.blit(storage.spritesheet, [x,y],storage.animinfo["Portraits"][item[0]+item[1]])
 				
 			size = 0
 			for item in self.diamessages:
-				texttorender = item.split("\n")
+				texttorender = formattextforwidth(item,390)#.split("\n")
 				for line in texttorender:
 					size += storage.writer.size(line)[1]
 				size += 5
@@ -1670,9 +1671,9 @@ class uiobject(sharedlib.gameobject):
 				size += storage.writer.size(self.choices[index])[1]
 				size += 5
 			for item in self.diamessages:
-				texttorender = item.split("\n")
+				texttorender = formattextforwidth(item,390)#.split("\n")
 				for line in texttorender:
-					storage.uicanvas.blit(storage.writer.render(line,False,(255,255,0)),[165,440-size])
+					storage.uicanvas.blit(storage.writer.render(line,False,self.color),[165,440-size])
 					size -= storage.writer.size(line)[1]
 				size -= 5
 			for index in range(len(self.choices)):
@@ -1680,7 +1681,7 @@ class uiobject(sharedlib.gameobject):
 				if self.active == index:
 					storage.uicanvas.blit(storage.writer.render(">"+self.choices[index],False,(255,255,255)),[165,440-size])
 				else:
-					storage.uicanvas.blit(storage.writer.render(self.choices[index],False,(255,255,0)),[165,440-size])
+					storage.uicanvas.blit(storage.writer.render(self.choices[index],False,self.color),[165,440-size])
 				size -= storage.writer.size(self.choices[index])[1]
 				
 			
@@ -1770,12 +1771,15 @@ class cutsceneplayer(sharedlib.gameobject):
 		else:
 			self.blueprint = copy.deepcopy(storage.cutscenes[self.name])
 		self.itr = data[1]
+		print(self.itr)
+		storage.actlock = True
 
 	def render(self):
 		pass
 
 	def loadscene(self,name):
 		self.blueprint = copy.deepcopy(storage.cutscenes[name])
+		self.name = name
 		self.itr = 0
 
 	def update(self):
@@ -1791,6 +1795,9 @@ class cutsceneplayer(sharedlib.gameobject):
 					pass
 				else:
 					getattr(target,action[1][0])(*action[1][1:])
+				self.itr += 1
+			case "cam":
+				getattr(storage.camera,action[1][0])(*action[1][1:])
 				self.itr += 1
 			case "char":
 				if action[1][0] == "partyleader":
@@ -1815,6 +1822,65 @@ class cutsceneplayer(sharedlib.gameobject):
 						result = getattr(target,action[1][1])(*action[1][2:])
 				if result != False:
 					self.itr += 1
+			case "loadcutscene":
+				self.loadscene(action[1])
+			case "loadifprogress":
+				if action[1][1] == storage.missionprogress[action[1][0]]:
+					self.loadscene(action[1][2])
+					return
+				self.itr += 1
+			case "loadiflessprogress":
+				if action[1][1] > storage.missionprogress[action[1][0]]:
+					self.loadscene(action[1][2])
+					return
+				self.itr += 1
+			case "loadifinparty":
+				for member in storage.party:
+					if action[1][0] == member.name + str(member.id):
+						self.loadscene(action[1][1])
+						return
+				self.itr += 1
+			case "loadifleader":
+				for member in storage.party:
+					if member.state == 3:
+						if action[1][0] == member.name + str(member.id):
+							self.loadscene(action[1][1])
+							return
+				self.itr += 1
+			case "doiffurther":
+				for member in storage.party:
+					if member.state == 3:
+						if (member.x-action[1][0][0])**2+(member.y-action[1][0][1])**2>action[1][1]**2:
+							action = action[1][2][0]
+							return
+				if len(action[1]) > 2:
+					action = action[1][2][1]
+					return
+				self.itr += 1
+			case "doifprogress":
+				if action[1][1] == storage.missionprogress[action[1][0]]:
+					action = action[1][2]
+					return
+				self.itr += 1
+			case "doifleader":
+				for member in storage.party:
+					if member.state == 3:
+						if action[1][0] == member.name + str(member.id):
+							action = action[1][1]
+							return
+				if len(action[1]) > 2:
+					action = action[1][2]
+					return
+				self.itr += 1
+			case "doifinparty":
+				for member in storage.party:
+					if action[1][0] == member.name + str(member.id):
+						action = action[1][1]
+						return
+				if len(action[1]) > 2:
+					action = action[1][2]
+					return
+				self.itr += 1
 			case "loadfromui":
 				target = self.findui()
 				if not target:
@@ -1832,6 +1898,20 @@ class cutsceneplayer(sharedlib.gameobject):
 					action[1] -= storage.deltatime
 					if action[1] <= 0:
 						self.itr += 1
+			case "partywarpto":
+				itr = 0
+				for member in storage.party:
+					if member.state == 3:
+						member.x = action[1][0]
+						member.y = action[1][1]
+						member.z = action[1][2]
+					else:
+						angle = itr*2*math.pi/len(storage.party)
+						member.x = action[1][0]+(100*math.sin(angle))
+						member.y = action[1][1]+(100*math.cos(angle))
+						member.z = action[1][2]
+					itr += 1
+				self.itr += 1
 			case "advancequest":
 				if storage.missionprogress[action[1]] < action[2]:
 					storage.missionprogress[action[1]] = action[2]
@@ -1841,6 +1921,10 @@ class cutsceneplayer(sharedlib.gameobject):
 				self.itr += 1
 			case "loadvn":
 				sharedlib.start_cutscene(action[1])
+			case "theyfight":
+				self.itr += 1
+				storage.winstate = save()
+				sharedlib.loadgame(action[1])
 		if len(self.blueprint) == self.itr:
 			self.delete()
 
@@ -1928,7 +2012,7 @@ class combatmanager(sharedlib.gameobject):
 				if obj.combatactive == False:
 					pos = obj.getcombatlocation()
 					if [obj.x,obj.y] != pos:
-						obj.goto(pos[0],pos[1])
+						obj.warpto((pos[0],pos[1],0))
 				if obj not in storage.objlist:
 					self.fighters.remove(obj)
 					index -= 1
@@ -1994,7 +2078,7 @@ class combatmanager(sharedlib.gameobject):
 	def win(self):
 		winanim = [["ui",["loadui","Win"]],["wait","enter"]]
 		for man in self.fighters:
-			if man.name != None:
+			if man.name != None and "Win" + man.name + str(man.id) in storage.cutscenes.keys():
 				winanim.insert(1,*(storage.cutscenes["Win"+man.name+str(man.id)]))
 			for item in man.timedfx:
 				if item[0] == "combatend":
@@ -2113,6 +2197,9 @@ def loadbluprint(name):
 				match cond[0]:
 					case "earlierinplot":
 						if storage.missionprogress[cond[1]] < cond[2]:
+							spawn = False
+					case "laterinplot":
+						if storage.missionprogress[cond[1]] > cond[2]:
 							spawn = False
 		if spawn:
 			obj = globals()[item[0]](*item[1])

@@ -16,3 +16,8 @@ def MissingnoInteract(agent):
 	sharedlib.cutscenestart("test2")
 def MissingnoIdle(agent):
 	pass
+def CHAS0Interact(agent):
+	if storage.missionprogress["CHAS"] == 1:
+		sharedlib.cutscenestart("CHAS01")
+	else:
+		sharedlib.cutscenestart("CHAS0")
