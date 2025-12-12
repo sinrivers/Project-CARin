@@ -194,18 +194,18 @@ class character(object3d):
 		else:
 			#print("MAAHHH")
 			#if self.combatactive == True:
-			self.animpicker()
-			if self.combatactions != []:
-				doit = self.combatactions[self.combatactionsindex][0]
-				getattr(self,doit)()
-
-			#NOTE: It is stupid that this second check has to be here, but it does. Otherwise, we can't back out of target selection and stuff like that. Can somebody propose a better solution? Who am I kidding, nobody else reads these comments...
-			if self.combatactions != []:
-				if self.combatactionsindex == len(self.combatactions):
-					self.combatactive = False
-					self.combattarget = []
-					self.combatactions = []
-					self.combatactionsindex = 0
+				self.animpicker()
+				if self.combatactions != []:
+					doit = self.combatactions[self.combatactionsindex][0]
+					getattr(self,doit)()
+	
+				#NOTE: It is stupid that this second check has to be here, but it does. Otherwise, we can't back out of target selection and stuff like that. Can somebody propose a better solution? Who am I kidding, nobody else reads these comments...
+				if self.combatactions != []:
+					if self.combatactionsindex == len(self.combatactions):
+						self.combatactive = False
+						self.combattarget = []
+						self.combatactions = []
+						self.combatactionsindex = 0
 		#natural decrease of speed
 		self.physics()
 		#update locations based on speed
@@ -387,13 +387,25 @@ class character(object3d):
 			pygame.draw.rect(storage.spritecanvas, (0,0,100), (int(self.x-storage.camfocus[0]),int(self.y-storage.camfocus[1]),self.w,self.h),2)
 			
 			holder=storage.animinfo[self.name]["frames"][storage.animinfo[self.name]["anims"][self.animname][self.framenumber][0]]
+			sprite = pygame.Surface(holder[2:])
+			sprite.fill([255,0,255])
+			sprite.set_colorkey([255,0,255])
+			
+			sprite.blit(storage.spritesheet,[0,0],holder)
 			if len(storage.animinfo[self.name]["anims"][self.animname][self.framenumber]) <= 2:
+				storage.spritecanvas.blit(sprite, [int(self.x+self.w/2-holder[2]/2-storage.camfocus[0]),
+										int(self.y+self.h/2-holder[3]+self.z+self.d/2-storage.camfocus[1])])
+			else:
+				storage.spritecanvas.blit(pygame.transform.flip(sprite,1,0), [int(self.x+self.w/2-holder[2]/2-storage.camfocus[0]),
+										int(self.y+self.h/2-holder[3]+self.z+self.d/2-storage.camfocus[1])])
+
+			"""if len(storage.animinfo[self.name]["anims"][self.animname][self.framenumber]) <= 2:
 				storage.spritecanvas.blit(storage.spritesheet, [int(self.x+self.w/2-holder[2]/2-storage.camfocus[0]),
 										int(self.y+self.h/2-holder[3]+self.z+self.d/2-storage.camfocus[1])],holder)
 			else:
 				holdermod = storage.spritesheet.get_width()-holder[0]-holder[2]
 				storage.spritecanvas.blit(pygame.transform.flip(storage.spritesheet,1,0), [int(self.x+self.w/2-holder[2]/2-storage.camfocus[0]),
-										int(self.y+self.h/2-holder[3]+self.z+self.d/2-storage.camfocus[1])],[holdermod,holder[1],holder[2],holder[3]])
+										int(self.y+self.h/2-holder[3]+self.z+self.d/2-storage.camfocus[1])],[holdermod,holder[1],holder[2],holder[3]])"""
 	def checkcollide(self):
 		self.grounded = False
 		for obj in storage.objlist:
@@ -597,6 +609,7 @@ class character(object3d):
 		else:
 			self.combatactions = [["goto",pos]]
 			self.combatactionsindex = 0
+			self.combatactive = True
 		if [self.x,self.y] == [pos[0],pos[1]]:
 			self.combatactionsindex += 1
 		else:
@@ -692,20 +705,22 @@ class character(object3d):
 			elif pygame.K_BACKSPACE in storage.newkeys:
 				self.combatactions = []
 				self.combatactionsindex = 0
-			elif pygame.K_DOWN in storage.newkeys:
-				index = index(target.fighters,self.combattarget[-1])
+			elif pygame.K_s in storage.newkeys:
+				index = target.fighters.index(self.combattarget[-1])
 				for i in range(index+1,len(target.fighters)):
 					if target.fighters[i].state < 2:
+						self.combattarget = self.combattarget[:-1]
 						self.combattarget.append(target.fighters[i])
 						break
-			elif pygame.K_UP in storage.newkeys:
-				index = index(target.fighters,self.combattarget[-1])
-				for i in range(index,0,-1):
+			elif pygame.K_w in storage.newkeys:
+				index = target.fighters.index(self.combattarget[-1])
+				for i in range(index-1,0,-1):
 					if target.fighters[i].state == 1:
+						self.combattarget = self.combattarget[:-1]
 						self.combattarget.append(target.fighters[i])
 						break
 			for item in self.combattarget[:-1]:
-				pygame.draw.rect(storage.spritecanvas,(255,255,0),[item.x-10,item-10,item.w+20,item.h+20],5)
+				pygame.draw.rect(storage.spritecanvas,(255,255,0),[item.x-10,item.y-10,item.w+20,item.h+20],5)
 			pygame.draw.rect(storage.spritecanvas,(255,255,255),[self.combattarget[-1].x-10,self.combattarget[-1].y-10,self.combattarget[-1].w+20,self.combattarget[-1].h+20],5)
 		
 
@@ -1269,7 +1284,7 @@ class mapdisplay(sharedlib.gameobject):
 		super().__init__()
 		self.x = x
 		self.y = y
-		self.image = pygame.transform.scale_by(pygame.image.load(f"Assets/graphics/{path}.png").convert(),scale)
+		self.image = pygame.transform.scale_by(pygame.image.load(f"assets/graphics/{path}.png").convert(),scale)
 		self.path = path
 		self.scale = scale
 		self.w,self.h = self.image.get_size()
@@ -1284,7 +1299,7 @@ class mapdisplay(sharedlib.gameobject):
 		self.h = data[3]
 		self.path = data[4]
 		self.scale = data[5]
-		self.image = pygame.transform.scale_by(pygame.image.load(f"Assets/graphics/{self.path}.png").convert(),self.scale)
+		self.image = pygame.transform.scale_by(pygame.image.load(f"assets/graphics/{self.path}.png").convert(),self.scale)
 
 	def update(self):
 		super().update()

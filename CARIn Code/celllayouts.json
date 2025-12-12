@@ -29,7 +29,7 @@
 	      ["party",[0]],
 	      ["character",[300,400,0,50,50,50,1,"Hacker"]],
 	      ["character",[300,400,0,50,50,50,1,"Hacker"]],
-	      ["musicbg",["CombatBoucy.mp3",false]],
+	      ["musicbg",["CombatBouncy.wav",false]],
 	      ["combatmanager",[1]] ],
 "VFox":[ ["mapdisplay",["Bigtest",0,0]],
 	      ["party",[0]],

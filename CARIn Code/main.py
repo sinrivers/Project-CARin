@@ -61,7 +61,7 @@ storage.enemyspawns = {}
 storage.party = []
 storage.camfocus = [0,0]
 storage.cambounds = [0,0,storage.screensize[0],storage.screensize[1]]
-storage.debug = True
+storage.debug = False
 storage.orderreset = False
 storage.actlock = False
 storage.menus = json.load(open("menulayouts.json"))
@@ -276,7 +276,7 @@ storage.cutscenes = {
 				["wait","enter"],
 				["ui",["loadui","Blank"]],
 				["wait",60],
-				["theyfight","VHacker"],
+				["theyfight","VHackers"],
 				["loadifinparty",["DiRK0","MeetHacker3DiRK"]],
 				["loadcutscene","MeetHacker3"]],
 			"MeetHacker3DiRK":[
@@ -1034,14 +1034,31 @@ storage.cutscenes["intro_vn"] = [
 	"SiVa1"
 ]
 storage.cutscenes["outro_vn"] = [
+	{"speaker":None,"text":"CARIn'S QUEST DEMO: STAFF ROLL"},
+	{"speaker":None,"text":"PROGRAMMING: TALIESIN 'SAD ROBOT' REESE, RICARDO '8A' OCHOA"},
+	{"speaker":None,"text":"MUSIC: DEXTER 'DEX' SKILLESTAD , SAD ROBOT"},
+	{"speaker":None,"text":"ARTWORK: SINATRA 'SIN' SKILLESTAD, SAD ROBOT"},
+	{"speaker":None,"text":"STORY: SAD ROBOT, KATHRYN 'ELIZA' RILEY"},
+	{"speaker":None,"text":"WORLD DESIGN: SAD ROBOT"},
+	{"speaker":None,"text":"ADVISING: DEREK BABB, CHARLES FISHER, ADA RHODES-WISH"},
+	{"speaker":None,"text":"SPECIAL THANKS: GOD, ALL THE FOLKS AT HOME, THE LATE RICHARD LEE OSMUN..."},
+	{"speaker":None,"text":"SPECIAL THANKS: THE MATHWIZ TEAM (JENISON, SCEBOLD, PLOTNIKOV, MILLER, KAKISH)..."},
+	{"speaker":None,"text":"SPECIAL THANKS: THE MAKERS OF TRON, CYBERCHASE, OVERDRAWN AT THE MEMORY BANK, AND OUR OTHER INSPIRATIONS..."},
+	{"speaker":None,"text":"SPECIAL THANKS: CONCERNEDAPE, PIXEL NOTCH, NUCLEAR MONKEY, AND A HOST OF OTHERS..."},
+	{"speaker":None,"text":"SPECIAL THANKS: ...AND USERS LIKE YOU. THANK YOU!"},
+	{"speaker":None,"text":">>END OF LINE_"},
+	
 	{"speaker": None, "text":">Meanwhile, in the real world...<"},
+	["Enkye","Normal",1,[5,0]],
 	{"speaker": "Locke Enkye", "text":"Hey, Allie!"},
+	["Flyngal","Normal",0,[517,0]],
 	{"speaker": "Alicia Flyngal", "text":"Mr. Enkye! How can I help you?"},
 	{"speaker": "Locke Enkye", "text":"Just checking how that password manager I sent down here is doing."},
 	{"speaker": "Alicia Flyngal", "text":"Oh, DiRK? It's doing well. We got the client installed on the IT mainframe with no issues."},
 	{"speaker": "Alicia Flyngal", "text":"All our department's passwords are now encrypted and stored securely. It even gave a report on any weak passwords."},
 	{"speaker": "Locke Enkye", "text":"Do I wanna know how many 'password123's the IT department has?"},
 	{"speaker": "Alicia Flyngal", "text":"More than I'd like...maybe you'll have to run us through some more training."},
+	["Gates","Normal",0,[260,0]],
 	{"speaker": "Steven Gates", "text":"Hey Mr. E, I've got something for you!"},
 	{"speaker": "Locke Enkye", "text":"What is it, Steve?"},
 	{"speaker": "Steven Gates", "text":"Just got a report back from one of our access programs--we had a security breach!"},
@@ -1130,11 +1147,12 @@ storage.cyberdict = {
 			}
 storage.levels = json.load(open("celllayouts.json"))
 storage.animinfo = json.load(open("animinfo.json"))
-storage.spritesheet = pygame.image.load(f"Assets/graphics/spritesheet.png").convert()
+storage.spritesheet = pygame.image.load(f"assets/graphics/spritesheet.png").convert()
 storage.spritesheet.set_colorkey((255,0,255))
 sharedlib.menu_active = False
-#sharedlib.loadmenu("testsub")
-sharedlib.loadgame("NiPo1")#circtest")
+sharedlib.loadmenu("testsub")
+#sharedlib.start_cutscene("outro_vn")
+#sharedlib.loadgame("VHackers")#circtest")
 storage.savestate = gameutils.save()
 storage.runstate = gameutils.save()
 storage.winstate = gameutils.save()
